@@ -57,9 +57,15 @@ function initSchema() {
 
 function seedKnownTokens(d: Database.Database) {
   const knownTokens = [
+    // ConLaunch team tokens
     { name: "ConLaunch", symbol: "CLAUNCH", token_address: "0x31d553822B37BDA67126D5ea9d165B9456f72b07", tx_hash: "0x3e84e5a48fc11deaff79367c4a884413d554e5714b53eb441a49c90b3c0f9bcc", client_wallet: "0xd068B9dbf5B60539d4f4B0A0D36c90aD99A1C5F1", client_bps: 8000, platform_bps: 2000 },
     { name: "ConLaunch Test", symbol: "CLTEST", token_address: "0xe3cc7Af9f55f3C2b0eC4908261E2D44272Dd2b07", tx_hash: "0x6b5315caed8b10a361eda99be2ebab5114b14d3098b446711edfc1d947596a19", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
     { name: "Open Test", symbol: "OTEST", token_address: "0xDecBc0F9245098722c22533840C955AB2C519B07", tx_hash: "0x43bde68c5762defa79f814760c423edfc1bbd3b1aa3bdf7b6aeac39e3cb35fed", client_wallet: "0xd068B9dbf5B60539d4f4B0A0D36c90aD99A1C5F1", client_bps: 8000, platform_bps: 2000 },
+    // User-deployed tokens (recovered from on-chain)
+    { name: "Conway", symbol: "Conway", token_address: "0xeB7631906dBC28ce6688912f53133d07B1f01B07", tx_hash: "0xf5fa2232680ec27f006390dde74651710ba22d75bcd6c1f8db0741c966f8d063", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
+    { name: "Conway", symbol: "Conway", token_address: "0x20A8428C402A7636d23Af3a1178b30F47a950b07", tx_hash: "0x91d97fc8c1ed3828e071bceaf701fe36ddb521ccd8723b51917dad64538f6dd7", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
+    { name: "TST333", symbol: "TST", token_address: "0x98861Ac6D5d7fFCE3004E9164863CBDDf6cf1b07", tx_hash: "0xb24767d3a41d4be270764a75835e265686944e9d4872c50b15257ada86adda6f", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
+    { name: "BEAST", symbol: "BEAST", token_address: "0x00BEd711a65c0b02F0460E72903A6F4aa2DB0b07", tx_hash: "0x4c3df724b95b0bf77e178a3f63d81c4a2d1787371be3e80e7389bbca71626541", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
   ];
 
   const insert = d.prepare(`
