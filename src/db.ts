@@ -50,6 +50,26 @@ function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_tokens_status ON tokens(status);
     CREATE INDEX IF NOT EXISTS idx_claims_token ON fee_claims(token_address);
   `);
+
+  // Seed: ensure known deployed tokens always exist in DB
+  seedKnownTokens(d);
+}
+
+function seedKnownTokens(d: Database.Database) {
+  const knownTokens = [
+    { name: "ConLaunch", symbol: "CLAUNCH", token_address: "0x31d553822B37BDA67126D5ea9d165B9456f72b07", tx_hash: "0x3e84e5a48fc11deaff79367c4a884413d554e5714b53eb441a49c90b3c0f9bcc", client_wallet: "0xd068B9dbf5B60539d4f4B0A0D36c90aD99A1C5F1", client_bps: 8000, platform_bps: 2000 },
+    { name: "ConLaunch Test", symbol: "CLTEST", token_address: "0xe3cc7Af9f55f3C2b0eC4908261E2D44272Dd2b07", tx_hash: "0x6b5315caed8b10a361eda99be2ebab5114b14d3098b446711edfc1d947596a19", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
+    { name: "Open Test", symbol: "OTEST", token_address: "0xDecBc0F9245098722c22533840C955AB2C519B07", tx_hash: "0x43bde68c5762defa79f814760c423edfc1bbd3b1aa3bdf7b6aeac39e3cb35fed", client_wallet: "0xd068B9dbf5B60539d4f4B0A0D36c90aD99A1C5F1", client_bps: 8000, platform_bps: 2000 },
+  ];
+
+  const insert = d.prepare(`
+    INSERT OR IGNORE INTO tokens (name, symbol, token_address, tx_hash, client_wallet, client_bps, platform_bps, vault_percentage)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+  `);
+
+  for (const t of knownTokens) {
+    insert.run(t.name, t.symbol, t.token_address, t.tx_hash, t.client_wallet, t.client_bps, t.platform_bps);
+  }
 }
 
 export function recordDeployment(
