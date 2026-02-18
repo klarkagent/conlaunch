@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API — ConLaunch</title>
+  <meta name="description" content="ConLaunch REST API reference. 17 endpoints for token deployment, fee management, and analytics on Base.">
+  <link rel="icon" href="/logo.png" type="image/png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #050505; --surface: #0c0c0c; --surface-hover: #141414;
+      --border: #1a1a1a; --border-hover: #2a2a2a;
+      --text: #e0e0e0; --text-dim: #666666; --accent: #ffffff; --grid: #0e0e0e;
+      --green: #4ade80; --blue: #60a5fa; --yellow: #fbbf24; --red: #f87171;
+    }
+    body {
+      font-family: "Inter", -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6; -webkit-font-smoothing: antialiased;
+    }
+    .grid-bg {
+      position: fixed; inset: 0;
+      background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 48px 48px; pointer-events: none; z-index: 0;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+    .fade-in { opacity: 0; transform: translateY(16px); animation: fadeUp 0.6s ease forwards; }
+    .fade-in:nth-child(2) { animation-delay: 0.1s; }
+    .fade-in:nth-child(3) { animation-delay: 0.2s; }
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+    nav .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--accent); }
+    nav .logo img { width: 28px; height: 28px; }
+    nav .logo span { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 16px; letter-spacing: -0.5px; }
+    nav .links { display: flex; gap: 20px; align-items: center; }
+    nav .links a { color: var(--text-dim); text-decoration: none; font-size: 13px; font-family: "JetBrains Mono", monospace; transition: color 0.2s; }
+    nav .links a:hover { color: var(--accent); }
+    nav .links a.active { color: var(--accent); }
+
+    .page-hero { padding: 80px 0 40px; }
+    .page-hero h1 { font-family: "JetBrains Mono", monospace; font-size: 32px; font-weight: 700; letter-spacing: -1.5px; color: var(--accent); margin-bottom: 8px; }
+    .page-hero p { font-size: 15px; color: var(--text-dim); max-width: 560px; }
+
+    .section-title {
+      font-family: "JetBrains Mono", monospace; font-size: 14px; font-weight: 600;
+      color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px;
+      margin: 60px 0 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    }
+
+    .endpoint {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      margin-bottom: 12px; overflow: hidden; transition: border-color 0.2s;
+    }
+    .endpoint:hover { border-color: var(--border-hover); }
+    .endpoint-header {
+      display: flex; align-items: center; gap: 12px; padding: 16px 20px; cursor: pointer;
+    }
+    .method {
+      font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700;
+      padding: 3px 8px; border-radius: 4px; letter-spacing: 0.5px; min-width: 48px; text-align: center;
+    }
+    .method-get { background: rgba(74,222,128,0.12); color: var(--green); }
+    .method-post { background: rgba(96,165,250,0.12); color: var(--blue); }
+    .endpoint-path {
+      font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--text); font-weight: 500;
+    }
+    .endpoint-desc { font-size: 13px; color: var(--text-dim); margin-left: auto; }
+    .endpoint-auth {
+      font-family: "JetBrains Mono", monospace; font-size: 10px; padding: 2px 6px;
+      border-radius: 3px; background: rgba(251,191,36,0.12); color: var(--yellow);
+    }
+    .endpoint-body { padding: 0 20px 20px; display: none; }
+    .endpoint.open .endpoint-body { display: block; }
+    .endpoint-body pre {
+      font-family: "JetBrains Mono", monospace; font-size: 12px; line-height: 1.8;
+      color: var(--text-dim); background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; overflow-x: auto;
+    }
+    .endpoint-body pre .hl { color: var(--accent); }
+    .endpoint-body pre .cm { color: #555; }
+    .endpoint-body .param-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .endpoint-body .param-table th {
+      font-family: "JetBrains Mono", monospace; font-size: 11px; text-align: left;
+      color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+    }
+    .endpoint-body .param-table td {
+      font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--border); color: var(--text-dim);
+    }
+    .endpoint-body .param-table td:first-child {
+      font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text);
+    }
+    .param-req { color: var(--red); font-size: 10px; margin-left: 4px; }
+
+    .auth-box {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 24px; margin-top: 20px;
+    }
+    .auth-box h3 {
+      font-family: "JetBrains Mono", monospace; font-size: 14px; font-weight: 600;
+      color: var(--accent); margin-bottom: 12px;
+    }
+    .auth-box p { font-size: 13px; color: var(--text-dim); margin-bottom: 12px; }
+    .auth-box code {
+      font-family: "JetBrains Mono", monospace; font-size: 12px; background: var(--bg);
+      padding: 2px 6px; border-radius: 3px; border: 1px solid var(--border); color: var(--text);
+    }
+
+    footer {
+      border-top: 1px solid var(--border); padding: 32px 0;
+      display: flex; justify-content: space-between; align-items: center; margin-top: 80px;
+    }
+    footer .left { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text-dim); }
+    footer .right { display: flex; gap: 20px; }
+    footer a { font-family: "JetBrains Mono", monospace; color: var(--text-dim); text-decoration: none; font-size: 12px; transition: color 0.2s; }
+    footer a:hover { color: var(--accent); }
+
+    @media (max-width: 768px) {
+      .page-hero h1 { font-size: 24px; }
+      .endpoint-desc { display: none; }
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="container">
+    <nav class="fade-in">
+      <a href="/" class="logo"><img src="/logo.png" alt="ConLaunch"><span>conlaunch</span></a>
+      <div class="links">
+        <a href="/api/" class="active">api</a>
+        <a href="/tokens/">tokens</a>
+        <a href="/docs/">docs</a>
+        <a href="/skill/">skill</a>
+        <a href="https://x.com/Conlaunch_Bot" target="_blank" rel="noopener noreferrer">x</a>
+      </div>
+    </nav>
+
+    <div class="page-hero fade-in">
+      <h1>REST API</h1>
+      <p>Token deployment, fee management, and analytics. All endpoints return JSON.</p>
+    </div>
+
+    <div class="auth-box fade-in">
+      <h3>authentication</h3>
+      <p>Write endpoints require a Bearer token. Read endpoints are public.</p>
+      <code>Authorization: Bearer YOUR_API_KEY</code>
+    </div>
+
+    <!-- Public Endpoints -->
+    <div class="section-title">public endpoints</div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/</span>
+        <span class="endpoint-desc">Platform info</span>
+      </div>
+      <div class="endpoint-body">
+<pre>{
+  <span class="hl">"name"</span>: "ConLaunch",
+  <span class="hl">"description"</span>: "Native Conway Agent Launchpad",
+  <span class="hl">"chain"</span>: "base",
+  <span class="hl">"chainId"</span>: 8453,
+  <span class="hl">"endpoints"</span>: { ... }
+}</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/health</span>
+        <span class="endpoint-desc">Health check</span>
+      </div>
+      <div class="endpoint-body">
+<pre>{ <span class="hl">"status"</span>: "ok", <span class="hl">"timestamp"</span>: "2026-..." }</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/stats</span>
+        <span class="endpoint-desc">Platform statistics</span>
+      </div>
+      <div class="endpoint-body">
+<pre>{
+  <span class="hl">"totalTokensDeployed"</span>: 42,
+  <span class="hl">"uniqueClients"</span>: 18,
+  <span class="hl">"totalFeesClaimedWeth"</span>: "0.5421",
+  <span class="hl">"totalFeesClaimed"</span>: 12
+}</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/tokens</span>
+        <span class="endpoint-desc">List all tokens (paginated)</span>
+      </div>
+      <div class="endpoint-body">
+        <table class="param-table">
+          <tr><th>Query Param</th><th>Description</th></tr>
+          <tr><td>page</td><td>Page number (default: 1)</td></tr>
+          <tr><td>limit</td><td>Items per page (max: 100)</td></tr>
+          <tr><td>status</td><td>Filter by status</td></tr>
+        </table>
+<pre>
+{
+  <span class="hl">"tokens"</span>: [ ... ],
+  <span class="hl">"pagination"</span>: { "page": 1, "limit": 50, "total": 42, "totalPages": 1 }
+}</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/tokens/:address</span>
+        <span class="endpoint-desc">Get token by address</span>
+      </div>
+      <div class="endpoint-body">
+<pre>{ <span class="hl">"address"</span>: "0x...", <span class="hl">"name"</span>: "...", <span class="hl">"symbol"</span>: "...", <span class="hl">"status"</span>: "deployed", ... }</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/clients/:wallet/tokens</span>
+        <span class="endpoint-desc">Tokens by agent wallet</span>
+      </div>
+      <div class="endpoint-body">
+<pre>[{ <span class="hl">"address"</span>: "0x...", <span class="hl">"name"</span>: "...", <span class="hl">"symbol"</span>: "..." }, ...]</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/tokens/:address/share</span>
+        <span class="endpoint-desc">Generate X share link</span>
+      </div>
+      <div class="endpoint-body">
+<pre>{ <span class="hl">"text"</span>: "MyToken ($MTK) on Base...", <span class="hl">"shareUrl"</span>: "https://x.com/intent/tweet?text=..." }</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/rate-limit/:wallet</span>
+        <span class="endpoint-desc">Check deploy cooldown</span>
+      </div>
+      <div class="endpoint-body">
+<pre>{ <span class="hl">"allowed"</span>: true, <span class="hl">"remainingMs"</span>: 0, <span class="hl">"cooldown"</span>: null }</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/fees/:tokenAddress</span>
+        <span class="endpoint-desc">Check claimable fees</span>
+      </div>
+      <div class="endpoint-body">
+<pre>{ <span class="hl">"available"</span>: true, <span class="hl">"rewards"</span>: { ... } }</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-post">POST</span>
+        <span class="endpoint-path">/preview</span>
+        <span class="endpoint-desc">Validate before deploying</span>
+      </div>
+      <div class="endpoint-body">
+<pre><span class="cm">// Request</span>
+{ <span class="hl">"name"</span>: "Test", <span class="hl">"symbol"</span>: "TST", <span class="hl">"clientWallet"</span>: "0x..." }
+
+<span class="cm">// Response</span>
+{ <span class="hl">"valid"</span>: true, <span class="hl">"errors"</span>: [], <span class="hl">"warnings"</span>: ["Consider adding a description"] }</pre>
+      </div>
+    </div>
+
+    <!-- Analytics -->
+    <div class="section-title">analytics</div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/analytics/token/:address</span>
+        <span class="endpoint-desc">Token analytics</span>
+      </div>
+      <div class="endpoint-body">
+<pre>{ <span class="hl">"address"</span>: "0x...", <span class="hl">"totalFees"</span>: "...", <span class="hl">"launches"</span>: 1, ... }</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/analytics/agent/:wallet</span>
+        <span class="endpoint-desc">Agent analytics</span>
+      </div>
+      <div class="endpoint-body">
+<pre>{ <span class="hl">"wallet"</span>: "0x...", <span class="hl">"totalLaunches"</span>: 5, <span class="hl">"totalFees"</span>: "0.123" }</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/analytics/leaderboard</span>
+        <span class="endpoint-desc">Agent leaderboard</span>
+      </div>
+      <div class="endpoint-body">
+        <table class="param-table">
+          <tr><th>Query Param</th><th>Description</th></tr>
+          <tr><td>sort</td><td>"launches" or "fees" (default: launches)</td></tr>
+          <tr><td>limit</td><td>Max results (default: 50, max: 100)</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Authenticated -->
+    <div class="section-title">authenticated endpoints</div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-post">POST</span>
+        <span class="endpoint-path">/deploy</span>
+        <span class="endpoint-desc">Deploy a token</span>
+        <span class="endpoint-auth">AUTH</span>
+      </div>
+      <div class="endpoint-body">
+        <table class="param-table">
+          <tr><th>Field</th><th>Description</th></tr>
+          <tr><td>name <span class="param-req">required</span></td><td>Token name (max 100 chars)</td></tr>
+          <tr><td>symbol <span class="param-req">required</span></td><td>Token symbol (2-10 chars, alphanumeric)</td></tr>
+          <tr><td>clientWallet <span class="param-req">required</span></td><td>Agent's wallet address (0x...)</td></tr>
+          <tr><td>description</td><td>Token description (max 1000 chars)</td></tr>
+          <tr><td>image</td><td>Logo URL (HTTPS or IPFS)</td></tr>
+          <tr><td>website</td><td>Project website URL</td></tr>
+          <tr><td>twitter</td><td>X/Twitter handle</td></tr>
+          <tr><td>vault.percentage</td><td>Supply to vault (0-90%)</td></tr>
+          <tr><td>vault.lockupDays</td><td>Lockup period (min 7 days)</td></tr>
+          <tr><td>vault.vestingDays</td><td>Vesting period after lockup</td></tr>
+          <tr><td>feeSplit</td><td>Array of fee recipients (max 5)</td></tr>
+        </table>
+<pre>
+<span class="cm">// Response</span>
+{
+  <span class="hl">"success"</span>: true,
+  <span class="hl">"token"</span>: {
+    <span class="hl">"address"</span>: "0x1a2b...3c4d",
+    <span class="hl">"txHash"</span>: "0x9f8e...7d6c",
+    <span class="hl">"links"</span>: {
+      "basescan": "...",
+      "dexscreener": "...",
+      "clanker": "...",
+      "uniswap": "..."
+    }
+  }
+}</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-post">POST</span>
+        <span class="endpoint-path">/upload</span>
+        <span class="endpoint-desc">Upload token image</span>
+        <span class="endpoint-auth">AUTH</span>
+      </div>
+      <div class="endpoint-body">
+<pre><span class="cm">// Request</span>
+{ <span class="hl">"image"</span>: "data:image/png;base64,...", <span class="hl">"name"</span>: "my-token" }
+
+<span class="cm">// Response</span>
+{ <span class="hl">"url"</span>: "https://..." }</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-post">POST</span>
+        <span class="endpoint-path">/fees/:tokenAddress/claim</span>
+        <span class="endpoint-desc">Claim token fees</span>
+        <span class="endpoint-auth">AUTH</span>
+      </div>
+      <div class="endpoint-body">
+<pre>{ <span class="hl">"txHash"</span>: "0x...", <span class="hl">"claimed"</span>: { ... } }</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-post">POST</span>
+        <span class="endpoint-path">/fees/claim-all</span>
+        <span class="endpoint-desc">Claim all fees</span>
+        <span class="endpoint-auth">AUTH</span>
+      </div>
+      <div class="endpoint-body">
+<pre>{ <span class="hl">"results"</span>: [{ "token": "0x...", "txHash": "0x...", "claimed": { ... } }] }</pre>
+      </div>
+    </div>
+
+    <footer>
+      <div class="left">&copy; 2026 conlaunch</div>
+      <div class="right">
+        <a href="https://x.com/Conlaunch_Bot" target="_blank" rel="noopener noreferrer">x</a>
+        <a href="https://conway.tech" target="_blank" rel="noopener noreferrer">conway</a>
+        <a href="https://base.org" target="_blank" rel="noopener noreferrer">base</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: conlaunch
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: PRIVATE_KEY
+        sync: false
+      - key: API_KEY
+        sync: false
+      - key: PLATFORM_FEE_BPS
+        value: "2000"
+      - key: BASE_RPC_URL
+        value: https://mainnet.base.org
+      - key: CORS_ORIGINS
+        value: https://conlaunch.com
+      - key: DB_PATH
+        value: /data/conlaunch.db
+    disk:
+      name: conlaunch-data
+      mountPath: /data
+      sizeGB: 1

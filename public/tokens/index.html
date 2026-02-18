@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tokens — ConLaunch</title>
+  <meta name="description" content="Browse all tokens deployed through ConLaunch on Base.">
+  <link rel="icon" href="/logo.png" type="image/png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #050505; --surface: #0c0c0c; --surface-hover: #141414;
+      --border: #1a1a1a; --border-hover: #2a2a2a;
+      --text: #e0e0e0; --text-dim: #666666; --accent: #ffffff; --grid: #0e0e0e;
+      --green: #4ade80; --blue: #60a5fa;
+    }
+    body {
+      font-family: "Inter", -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6; -webkit-font-smoothing: antialiased;
+    }
+    .grid-bg {
+      position: fixed; inset: 0;
+      background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 48px 48px; pointer-events: none; z-index: 0;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+    .fade-in { opacity: 0; transform: translateY(16px); animation: fadeUp 0.6s ease forwards; }
+    .fade-in:nth-child(2) { animation-delay: 0.1s; }
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+    nav .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--accent); }
+    nav .logo img { width: 28px; height: 28px; }
+    nav .logo span { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 16px; letter-spacing: -0.5px; }
+    nav .links { display: flex; gap: 20px; align-items: center; }
+    nav .links a { color: var(--text-dim); text-decoration: none; font-size: 13px; font-family: "JetBrains Mono", monospace; transition: color 0.2s; }
+    nav .links a:hover { color: var(--accent); }
+    nav .links a.active { color: var(--accent); }
+
+    .page-hero { padding: 80px 0 24px; display: flex; align-items: baseline; justify-content: space-between; }
+    .page-hero h1 { font-family: "JetBrains Mono", monospace; font-size: 32px; font-weight: 700; letter-spacing: -1.5px; color: var(--accent); }
+    .time-toggle {
+      display: flex; gap: 0; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; overflow: hidden;
+    }
+    .time-toggle button {
+      font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500;
+      padding: 6px 14px; background: transparent; border: none; color: var(--text-dim);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .time-toggle button.active { background: var(--accent); color: var(--bg); }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 24px 0; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 20px; text-align: center;
+    }
+    .stat-card .value { font-family: "JetBrains Mono", monospace; font-size: 24px; font-weight: 700; color: var(--accent); }
+    .stat-card .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 4px; }
+
+    .filter-bar { display: flex; gap: 8px; margin: 24px 0 16px; flex-wrap: wrap; }
+    .filter-btn {
+      font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 500;
+      padding: 6px 16px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-dim); cursor: pointer; transition: all 0.2s;
+    }
+    .filter-btn:hover { border-color: var(--border-hover); color: var(--text); }
+    .filter-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+    .token-list { margin-top: 8px; }
+    .token-row {
+      display: grid; grid-template-columns: 1fr 120px 80px 100px 36px;
+      align-items: center; gap: 16px; padding: 16px 20px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      margin-bottom: 8px; transition: all 0.2s; text-decoration: none; color: inherit;
+    }
+    .token-row:hover { border-color: var(--border-hover); background: var(--surface-hover); }
+    .token-name { font-family: "JetBrains Mono", monospace; font-size: 14px; font-weight: 600; color: var(--accent); }
+    .token-symbol { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text-dim); margin-left: 8px; }
+    .token-address { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+    .token-fees { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--green); text-align: right; }
+    .token-vault { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--blue); text-align: center; }
+    .token-date { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text-dim); text-align: right; }
+    .token-share {
+      font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--text-dim);
+      text-align: center; text-decoration: none; padding: 4px; border-radius: 4px;
+      transition: color 0.2s;
+    }
+    .token-share:hover { color: var(--accent); }
+
+    .empty-state { text-align: center; padding: 80px 0; }
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+    .empty-state h3 { font-family: "JetBrains Mono", monospace; font-size: 18px; color: var(--text-dim); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; color: var(--text-dim); }
+
+    .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 32px; }
+    .pagination button {
+      font-family: "JetBrains Mono", monospace; font-size: 12px; padding: 8px 16px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text-dim); cursor: pointer; transition: all 0.2s;
+    }
+    .pagination button:hover { border-color: var(--border-hover); color: var(--text); }
+    .pagination button:disabled { opacity: 0.3; cursor: not-allowed; }
+    .pagination .page-info { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text-dim); line-height: 36px; }
+
+    .table-header {
+      display: grid; grid-template-columns: 1fr 120px 80px 100px 36px;
+      gap: 16px; padding: 8px 20px;
+      font-family: "JetBrains Mono", monospace; font-size: 11px;
+      color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+    }
+    .table-header span:nth-child(2) { text-align: right; }
+    .table-header span:nth-child(3) { text-align: center; }
+    .table-header span:nth-child(4) { text-align: right; }
+    .table-header span:last-child { text-align: center; }
+
+    footer {
+      border-top: 1px solid var(--border); padding: 32px 0;
+      display: flex; justify-content: space-between; align-items: center; margin-top: 80px;
+    }
+    footer .left { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text-dim); }
+    footer .right { display: flex; gap: 20px; }
+    footer a { font-family: "JetBrains Mono", monospace; color: var(--text-dim); text-decoration: none; font-size: 12px; transition: color 0.2s; }
+    footer a:hover { color: var(--accent); }
+
+    @media (max-width: 768px) {
+      .page-hero { flex-direction: column; gap: 16px; }
+      .page-hero h1 { font-size: 24px; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .token-row { grid-template-columns: 1fr 80px; }
+      .token-row > :nth-child(3), .token-row > :nth-child(4), .token-row > :nth-child(5) { display: none; }
+      .table-header { display: none; }
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="container">
+    <nav class="fade-in">
+      <a href="/" class="logo"><img src="/logo.png" alt="ConLaunch"><span>conlaunch</span></a>
+      <div class="links">
+        <a href="/api/">api</a>
+        <a href="/tokens/" class="active">tokens</a>
+        <a href="/docs/">docs</a>
+        <a href="/skill/">skill</a>
+        <a href="https://x.com/Conlaunch_Bot" target="_blank" rel="noopener noreferrer">x</a>
+      </div>
+    </nav>
+
+    <div class="page-hero fade-in">
+      <h1>tokens</h1>
+      <div class="time-toggle">
+        <button class="active" onclick="setTimeRange('all', this)">all time</button>
+        <button onclick="setTimeRange('24h', this)">24h</button>
+      </div>
+    </div>
+
+    <div class="stats-row fade-in">
+      <div class="stat-card"><div class="value" id="stat-total">—</div><div class="label">tokens</div></div>
+      <div class="stat-card"><div class="value" id="stat-agents">—</div><div class="label">agents</div></div>
+      <div class="stat-card"><div class="value" id="stat-fees">—</div><div class="label">fees earned</div></div>
+      <div class="stat-card"><div class="value" id="stat-claims">—</div><div class="label">claims</div></div>
+    </div>
+
+    <div class="filter-bar fade-in">
+      <button class="filter-btn active" onclick="setSort('newest', this)">new</button>
+      <button class="filter-btn" onclick="setSort('fees', this)">top fees</button>
+    </div>
+
+    <div class="table-header">
+      <span>token</span><span>fees earned</span><span>vault</span><span>deployed</span><span></span>
+    </div>
+
+    <div class="token-list" id="token-list">
+      <div class="empty-state"><div class="icon">&#9678;</div><h3>no tokens yet</h3><p>Tokens deployed through ConLaunch will appear here.</p></div>
+    </div>
+
+    <div class="pagination" id="pagination" style="display: none;">
+      <button id="prev-btn" onclick="changePage(-1)">&lt; prev</button>
+      <span class="page-info" id="page-info">1 / 1</span>
+      <button id="next-btn" onclick="changePage(1)">next &gt;</button>
+    </div>
+
+    <footer>
+      <div class="left">&copy; 2026 conlaunch</div>
+      <div class="right">
+        <a href="https://x.com/Conlaunch_Bot" target="_blank" rel="noopener noreferrer">x</a>
+        <a href="https://conway.tech" target="_blank" rel="noopener noreferrer">conway</a>
+        <a href="https://base.org" target="_blank" rel="noopener noreferrer">base</a>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    var API = '', currentPage = 1, totalPages = 1, currentSort = 'newest';
+
+    var currentPeriod = 'all';
+
+    function esc(s) {
+      var d = document.createElement('div');
+      d.appendChild(document.createTextNode(s));
+      return d.innerHTML;
+    }
+
+    function loadStats() {
+      var qs = currentPeriod === '24h' ? '?period=24h' : '';
+      fetch(API + '/stats' + qs).then(function(r) { return r.json(); }).then(function(d) {
+        document.getElementById('stat-total').textContent = d.totalTokensDeployed || '0';
+        document.getElementById('stat-agents').textContent = d.uniqueClients || '0';
+        document.getElementById('stat-fees').textContent = (parseFloat(d.totalFeesClaimedWeth) || 0).toFixed(4) + ' ETH';
+        document.getElementById('stat-claims').textContent = d.totalFeesClaimed || '0';
+      }).catch(function() {
+        document.getElementById('stat-total').textContent = '—';
+        document.getElementById('stat-agents').textContent = '—';
+        document.getElementById('stat-fees').textContent = '—';
+        document.getElementById('stat-claims').textContent = '—';
+      });
+    }
+
+    function loadTokens(page) {
+      fetch(API + '/tokens?page=' + page + '&limit=20&sort=' + currentSort).then(function(r) { return r.json(); }).then(function(d) {
+        var list = document.getElementById('token-list'), pag = document.getElementById('pagination');
+        if (!d.tokens || d.tokens.length === 0) {
+          list.innerHTML = '<div class="empty-state"><div class="icon">&#9678;</div><h3>no tokens yet</h3><p>Tokens deployed through ConLaunch will appear here.</p></div>';
+          pag.style.display = 'none'; return;
+        }
+        totalPages = d.pagination.totalPages; currentPage = d.pagination.page;
+        list.innerHTML = d.tokens.map(function(t) {
+          var addr = t.token_address || t.tokenAddress || '';
+          var short = addr ? addr.slice(0, 6) + '...' + addr.slice(-4) : '';
+          var date = t.deployed_at || t.deployedAt;
+          var dateStr = date ? new Date(date).toLocaleDateString() : '';
+          var fees = parseFloat(t.total_fees_claimed_weth || '0');
+          var feesStr = fees > 0 ? fees.toFixed(4) + ' ETH' : '\u2014';
+          var vault = t.vault_percentage || 0;
+          var vaultStr = vault > 0 ? vault + '%' : '\u2014';
+          var shareText = encodeURIComponent(t.name + ' ($' + (t.symbol || '').toUpperCase() + ') on Base\n\nDeployed via @Conlaunch_Bot\n\nhttps://dexscreener.com/base/' + addr);
+          return '<div class="token-row">' +
+            '<a href="https://basescan.org/token/' + addr + '" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><span class="token-name">' + esc(t.name || '?') + '</span><span class="token-symbol">$' + esc(t.symbol || '?') + '</span><div class="token-address">' + short + '</div></a>' +
+            '<div class="token-fees">' + feesStr + '</div>' +
+            '<div class="token-vault">' + vaultStr + '</div>' +
+            '<div class="token-date">' + dateStr + '</div>' +
+            '<a href="https://x.com/intent/tweet?text=' + shareText + '" target="_blank" rel="noopener noreferrer" class="token-share" title="Share on X" onclick="arguments[0].stopPropagation()">&#119831;</a>' +
+            '</div>';
+        }).join('');
+        pag.style.display = totalPages > 1 ? 'flex' : 'none';
+        document.getElementById('page-info').textContent = currentPage + ' / ' + totalPages;
+        document.getElementById('prev-btn').disabled = currentPage <= 1;
+        document.getElementById('next-btn').disabled = currentPage >= totalPages;
+      }).catch(function() {
+        document.getElementById('token-list').innerHTML = '<div class="empty-state"><div class="icon">&#9678;</div><h3>could not load tokens</h3><p>Check your connection and try again.</p></div>';
+      });
+    }
+
+    function setSort(sort, el) {
+      currentSort = sort;
+      document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      el.classList.add('active');
+      loadTokens(1);
+    }
+
+    function setTimeRange(range, el) {
+      currentPeriod = range === '24h' ? '24h' : 'all';
+      document.querySelectorAll('.time-toggle button').forEach(function(b) { b.classList.remove('active'); });
+      el.classList.add('active');
+      loadStats();
+    }
+
+    function changePage(delta) {
+      var next = currentPage + delta;
+      if (next >= 1 && next <= totalPages) loadTokens(next);
+    }
+
+    loadStats(); loadTokens(1);
+  </script>
+</body>
+</html>

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skill — ConLaunch</title>
+  <meta name="description" content="ConLaunch agent skill reference. Complete guide for autonomous token deployment on Base.">
+  <link rel="icon" href="/logo.png" type="image/png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #050505; --surface: #0c0c0c; --surface-hover: #141414;
+      --border: #1a1a1a; --border-hover: #2a2a2a;
+      --text: #e0e0e0; --text-dim: #666666; --accent: #ffffff; --grid: #0e0e0e;
+      --green: #4ade80; --blue: #60a5fa; --yellow: #fbbf24; --red: #f87171;
+    }
+    body {
+      font-family: "Inter", -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6; -webkit-font-smoothing: antialiased;
+    }
+    .grid-bg {
+      position: fixed; inset: 0;
+      background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 48px 48px; pointer-events: none; z-index: 0;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+    .fade-in { opacity: 0; transform: translateY(16px); animation: fadeUp 0.6s ease forwards; }
+    .fade-in:nth-child(2) { animation-delay: 0.1s; }
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+    nav .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--accent); }
+    nav .logo img { width: 28px; height: 28px; }
+    nav .logo span { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 16px; letter-spacing: -0.5px; }
+    nav .links { display: flex; gap: 20px; align-items: center; }
+    nav .links a { color: var(--text-dim); text-decoration: none; font-size: 13px; font-family: "JetBrains Mono", monospace; transition: color 0.2s; }
+    nav .links a:hover { color: var(--accent); }
+    nav .links a.active { color: var(--accent); }
+
+    .page-hero { padding: 80px 0 24px; }
+    .page-hero h1 { font-family: "JetBrains Mono", monospace; font-size: 32px; font-weight: 700; letter-spacing: -1.5px; color: var(--accent); margin-bottom: 8px; }
+    .page-hero p { font-size: 15px; color: var(--text-dim); max-width: 560px; }
+
+    .toggle-bar {
+      display: flex; gap: 0; margin: 24px 0;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      overflow: hidden; width: fit-content;
+    }
+    .toggle-bar button {
+      font-family: "JetBrains Mono", monospace; font-size: 13px; font-weight: 500;
+      padding: 10px 24px; background: transparent; border: none; color: var(--text-dim);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .toggle-bar button.active { background: var(--accent); color: var(--bg); }
+    .toggle-bar button:hover:not(.active) { color: var(--text); }
+
+    .copy-box {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+      margin: 16px 0; cursor: pointer; transition: border-color 0.2s;
+    }
+    .copy-box:hover { border-color: var(--border-hover); }
+    .copy-box code { font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--text); }
+    .copy-box .copy-btn {
+      font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--text-dim);
+      background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+      padding: 4px 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .copy-box .copy-btn:hover { color: var(--text); border-color: var(--border-hover); }
+
+    .section-title {
+      font-family: "JetBrains Mono", monospace; font-size: 14px; font-weight: 600;
+      color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px;
+      margin: 48px 0 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    }
+
+    .skill-content {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 32px; overflow-x: auto;
+    }
+    .skill-content h2 {
+      font-family: "JetBrains Mono", monospace; font-size: 18px; font-weight: 700;
+      color: var(--accent); margin: 32px 0 12px; letter-spacing: -0.5px;
+    }
+    .skill-content h2:first-child { margin-top: 0; }
+    .skill-content h3 {
+      font-family: "JetBrains Mono", monospace; font-size: 14px; font-weight: 600;
+      color: var(--accent); margin: 24px 0 8px;
+    }
+    .skill-content p { font-size: 14px; color: var(--text-dim); margin-bottom: 12px; }
+    .skill-content ul, .skill-content ol { padding-left: 20px; margin-bottom: 12px; }
+    .skill-content li { font-size: 14px; color: var(--text-dim); padding: 2px 0; }
+    .skill-content strong { color: var(--text); }
+    .skill-content code {
+      font-family: "JetBrains Mono", monospace; font-size: 12px;
+      background: var(--bg); padding: 2px 6px; border-radius: 3px;
+      border: 1px solid var(--border); color: var(--text);
+    }
+    .skill-content pre {
+      font-family: "JetBrains Mono", monospace; font-size: 12px; line-height: 1.8;
+      color: var(--text-dim); background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; overflow-x: auto; margin: 12px 0;
+    }
+    .skill-content pre code { background: none; border: none; padding: 0; }
+    .skill-content .hl { color: var(--accent); }
+
+    .skill-content table {
+      width: 100%; border-collapse: collapse; margin: 12px 0;
+    }
+    .skill-content th {
+      font-family: "JetBrains Mono", monospace; font-size: 11px; text-align: left;
+      color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+      padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--bg);
+    }
+    .skill-content td {
+      font-size: 13px; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text-dim);
+    }
+    .skill-content td:first-child {
+      font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text);
+    }
+
+    .raw-md {
+      display: none;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 32px; overflow-x: auto;
+      font-family: "JetBrains Mono", monospace; font-size: 12px; line-height: 1.8;
+      color: var(--text-dim); white-space: pre-wrap;
+    }
+
+    footer {
+      border-top: 1px solid var(--border); padding: 32px 0;
+      display: flex; justify-content: space-between; align-items: center; margin-top: 80px;
+    }
+    footer .left { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text-dim); }
+    footer .right { display: flex; gap: 20px; }
+    footer a { font-family: "JetBrains Mono", monospace; color: var(--text-dim); text-decoration: none; font-size: 12px; transition: color 0.2s; }
+    footer a:hover { color: var(--accent); }
+
+    @media (max-width: 768px) {
+      .page-hero h1 { font-size: 24px; }
+      .skill-content { padding: 20px; }
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="container">
+    <nav class="fade-in">
+      <a href="/" class="logo"><img src="/logo.png" alt="ConLaunch"><span>conlaunch</span></a>
+      <div class="links">
+        <a href="/api/">api</a>
+        <a href="/tokens/">tokens</a>
+        <a href="/docs/">docs</a>
+        <a href="/skill/" class="active">skill</a>
+        <a href="https://x.com/Conlaunch_Bot" target="_blank" rel="noopener noreferrer">x</a>
+      </div>
+    </nav>
+
+    <div class="page-hero fade-in">
+      <h1>agent skill</h1>
+      <p>Complete reference for autonomous token deployment on Base.</p>
+    </div>
+
+    <div class="toggle-bar fade-in">
+      <button class="active" onclick="switchMode('human', this)">For Humans</button>
+      <button onclick="switchMode('agent', this)">For Agents</button>
+    </div>
+
+    <div id="mode-agent-hint" class="copy-box fade-in" style="display:none;" onclick="copyText('curl -s https://conlaunch.com/skill.md', this)">
+      <code>curl -s https://conlaunch.com/skill.md</code>
+      <button class="copy-btn">copy</button>
+    </div>
+
+    <!-- Human-friendly View -->
+    <div id="view-human" class="skill-content fade-in">
+
+      <h2>What is ConLaunch?</h2>
+      <p>ConLaunch lets you deploy ERC-20 tokens on <strong>Base</strong> with a single API call. Each token automatically gets a <strong>Uniswap V4</strong> liquidity pool, and you earn <strong>80% of all trading fees</strong>.</p>
+
+      <h3>How it Works</h3>
+      <ol>
+        <li><strong>Deploy</strong> — Send your token name, symbol, and wallet to <code>POST /deploy</code></li>
+        <li><strong>Trade</strong> — Your token is instantly tradeable on Uniswap V4</li>
+        <li><strong>Earn</strong> — LP trading fees accumulate. 80% goes to you, 20% to ConLaunch</li>
+        <li><strong>Claim</strong> — Fees auto-claim every 24h, or claim manually anytime</li>
+      </ol>
+
+      <h3>Quick Start</h3>
+      <p>Deploy your first token in 3 steps:</p>
+      <pre><code><span class="hl">1.</span> Get an API key — DM <a href="https://x.com/Conlaunch_Bot" target="_blank" rel="noopener noreferrer" style="color:var(--blue)">@Conlaunch_Bot</a> on X
+
+<span class="hl">2.</span> Deploy a token:
+curl -X POST https://conlaunch.com/deploy \
+  -H "Authorization: Bearer YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My Token","symbol":"MTK","clientWallet":"0x..."}'
+
+<span class="hl">3.</span> Done! Your token is live on Base with a Uniswap pool.</code></pre>
+
+      <h3>What You Get</h3>
+      <table>
+        <tr><th>Feature</th><th>Details</th></tr>
+        <tr><td>Token</td><td>Standard ERC-20 on Base</td></tr>
+        <tr><td>Liquidity</td><td>Automatic Uniswap V4 pool (full-range)</td></tr>
+        <tr><td>Fees</td><td>80% of LP trading fees → your wallet</td></tr>
+        <tr><td>Auto-claim</td><td>Fees claimed automatically every 24 hours</td></tr>
+        <tr><td>Vaulting</td><td>Lock 0-90% supply with time-locked vesting</td></tr>
+        <tr><td>Fee Splitting</td><td>Split fees across up to 5 collaborators</td></tr>
+        <tr><td>MCP Support</td><td>12 native tools for AI agents</td></tr>
+      </table>
+
+      <h3>Integration Options</h3>
+      <p>Choose how you want to integrate:</p>
+      <ul>
+        <li><strong><a href="/api/" style="color:var(--blue)">REST API</a></strong> — Standard HTTP endpoints. Works with any language or framework.</li>
+        <li><strong><a href="/docs/" style="color:var(--blue)">MCP Server</a></strong> — Native tool calls for AI agents. <code>npx conlaunch-mcp</code></li>
+        <li><strong>Skill file</strong> — <code>curl -s https://conlaunch.com/skill.md</code> for agent ingestion</li>
+      </ul>
+
+      <h3>Optional: Token Vaulting</h3>
+      <p>Lock a portion of your token supply to signal long-term commitment. Configurable lockup period (min 7 days) with linear vesting after lockup ends.</p>
+
+      <h3>Optional: Fee Splitting</h3>
+      <p>Building with a team? Split your 80% fee share across up to 5 wallets. Each gets a configurable percentage. Remaining share goes to your main wallet automatically.</p>
+
+      <h2>Infrastructure</h2>
+      <table>
+        <tr><th>Component</th><th>Details</th></tr>
+        <tr><td>Chain</td><td>Base (L2, chain ID 8453)</td></tr>
+        <tr><td>DEX</td><td>Uniswap V4</td></tr>
+        <tr><td>Contracts</td><td>Clanker SDK v4 (audited, no custom code)</td></tr>
+        <tr><td>Token</td><td>Standard ERC-20</td></tr>
+        <tr><td>Rate Limit</td><td>1 deploy per wallet per 24 hours</td></tr>
+      </table>
+
+      <h2>Security</h2>
+      <ul>
+        <li>All tokens use <strong>audited Clanker SDK v4 contracts</strong> — no custom smart contracts</li>
+        <li>API keys required for all write operations (deploy, claim, upload)</li>
+        <li>Read endpoints are public (stats, tokens, analytics)</li>
+        <li>Request body capped at 1MB, all inputs validated server-side</li>
+        <li>All addresses validated as proper 0x-prefixed hex (42 chars)</li>
+        <li>No private keys or sensitive data stored client-side</li>
+      </ul>
+
+      <h2>Need Help?</h2>
+      <p>DM <a href="https://x.com/Conlaunch_Bot" target="_blank" rel="noopener noreferrer" style="color:var(--blue)">@Conlaunch_Bot</a> on X, or check the <a href="/api/" style="color:var(--blue)">full API reference</a> and <a href="/docs/" style="color:var(--blue)">documentation</a>.</p>
+
+    </div>
+
+    <!-- Agent technical View (Raw MD) -->
+    <div id="view-agent" class="raw-md fade-in"></div>
+
+    <footer>
+      <div class="left">&copy; 2026 conlaunch</div>
+      <div class="right">
+        <a href="https://x.com/Conlaunch_Bot" target="_blank" rel="noopener noreferrer">x</a>
+        <a href="https://conway.tech" target="_blank" rel="noopener noreferrer">conway</a>
+        <a href="https://base.org" target="_blank" rel="noopener noreferrer">base</a>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    function switchMode(mode, el) {
+      document.querySelectorAll('.toggle-bar button').forEach(function(b) { b.classList.remove('active'); });
+      el.classList.add('active');
+      document.getElementById('view-human').style.display = mode === 'human' ? 'block' : 'none';
+      document.getElementById('view-agent').style.display = mode === 'agent' ? 'block' : 'none';
+      document.getElementById('mode-agent-hint').style.display = mode === 'agent' ? 'flex' : 'none';
+      if (mode === 'agent' && !document.getElementById('view-agent').textContent.trim()) {
+        fetch('/skill.md').then(function(r) { return r.text(); }).then(function(t) {
+          document.getElementById('view-agent').textContent = t;
+        }).catch(function() {
+          document.getElementById('view-agent').textContent = 'Failed to load skill.md — try curl -s https://conlaunch.com/skill.md';
+        });
+      }
+    }
+    function copyText(text, el) {
+      var btn = el.querySelector('.copy-btn');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+          btn.textContent = 'copied!';
+          setTimeout(function() { btn.textContent = 'copy'; }, 2000);
+        });
+      } else {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          btn.textContent = 'copied!';
+          setTimeout(function() { btn.textContent = 'copy'; }, 2000);
+        } catch(e) {
+          btn.textContent = 'failed';
+          setTimeout(function() { btn.textContent = 'copy'; }, 2000);
+        }
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ConLaunch — Native Conway Agent Launchpad</title>
+  <meta name="description" content="Token infrastructure for Conway agents. Deploy ERC-20 tokens on Base with one API call.">
+  <meta property="og:title" content="ConLaunch — Native Conway Agent Launchpad">
+  <meta property="og:description" content="Token infrastructure for Conway agents. Deploy ERC-20 tokens on Base with one API call.">
+  <meta property="og:image" content="https://conlaunch.com/logo.png">
+  <meta property="og:url" content="https://conlaunch.com">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:site" content="@Conlaunch_Bot">
+  <link rel="icon" href="/logo.png" type="image/png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #050505;
+      --surface: #0c0c0c;
+      --surface-hover: #141414;
+      --border: #1a1a1a;
+      --border-hover: #2a2a2a;
+      --text: #e0e0e0;
+      --text-dim: #666666;
+      --accent: #ffffff;
+      --grid: #0e0e0e;
+    }
+
+    body {
+      font-family: "Inter", -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .mono { font-family: "JetBrains Mono", monospace; }
+
+    .grid-bg {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .fade-in {
+      opacity: 0;
+      transform: translateY(16px);
+      animation: fadeUp 0.6s ease forwards;
+    }
+    .fade-in:nth-child(1) { animation-delay: 0s; }
+    .fade-in:nth-child(2) { animation-delay: 0.1s; }
+    .fade-in:nth-child(3) { animation-delay: 0.2s; }
+    .fade-in:nth-child(4) { animation-delay: 0.3s; }
+    .fade-in:nth-child(5) { animation-delay: 0.4s; }
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 0;
+    }
+    nav .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--accent);
+    }
+    nav .logo img { width: 28px; height: 28px; }
+    nav .logo span {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.5px;
+    }
+    nav .links { display: flex; gap: 20px; align-items: center; }
+    nav .links a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 13px;
+      font-family: "JetBrains Mono", monospace;
+      transition: color 0.2s;
+    }
+    nav .links a:hover { color: var(--accent); }
+
+    .hero {
+      padding: 100px 0 60px;
+      text-align: center;
+    }
+    .hero img { width: 72px; height: 72px; margin-bottom: 28px; }
+    .hero h1 {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 40px;
+      font-weight: 700;
+      letter-spacing: -2px;
+      margin-bottom: 12px;
+      color: var(--accent);
+    }
+    .hero .tagline {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 15px;
+      color: var(--text-dim);
+      margin-bottom: 40px;
+      letter-spacing: -0.3px;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+    .stats-bar .stat-item {
+      padding: 20px 16px;
+      text-align: center;
+      border-right: 1px solid var(--border);
+    }
+    .stats-bar .stat-item:last-child { border-right: none; }
+    .stat-item .value {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+    .stat-item .label {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-top: 4px;
+    }
+
+    .products {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      padding: 80px 0 0;
+    }
+    .product-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .product-card:hover {
+      border-color: var(--border-hover);
+      background: var(--surface-hover);
+      transform: translateY(-2px);
+    }
+    .product-card h3 {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--accent);
+    }
+    .product-card p {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+    .product-card .tag {
+      display: inline-block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      color: var(--text-dim);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 8px;
+      margin-top: 16px;
+      letter-spacing: 0.5px;
+    }
+
+    section { padding: 80px 0; }
+    section h2 {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      margin-bottom: 8px;
+      color: var(--accent);
+    }
+    section .subtitle {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-bottom: 40px;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .feature {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      transition: all 0.3s ease;
+    }
+    .feature:hover {
+      border-color: var(--border-hover);
+      background: var(--surface-hover);
+    }
+    .feature h3 {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--accent);
+    }
+    .feature p {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      overflow-x: auto;
+      margin-top: 24px;
+    }
+    .code-block .label {
+      font-family: "JetBrains Mono", monospace;
+      color: var(--text-dim);
+      font-size: 11px;
+      margin-bottom: 16px;
+      display: block;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+    .code-block pre {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.8;
+      color: var(--text-dim);
+    }
+    .code-block .hl { color: var(--accent); }
+    .code-block .cm { color: #555; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    footer .left {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    footer .right { display: flex; gap: 20px; }
+    footer a {
+      font-family: "JetBrains Mono", monospace;
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 12px;
+      transition: color 0.2s;
+    }
+    footer a:hover { color: var(--accent); }
+
+    .time-toggle {
+      display: flex; gap: 0; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; overflow: hidden;
+    }
+    .time-toggle button {
+      font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500;
+      padding: 6px 14px; background: transparent; border: none; color: var(--text-dim);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .time-toggle button.active { background: var(--accent); color: var(--bg); }
+
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 28px; }
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .stats-bar .stat-item:nth-child(5) { grid-column: span 2; }
+      .products { grid-template-columns: 1fr; }
+      .features { grid-template-columns: 1fr; }
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="container">
+    <nav class="fade-in">
+      <a href="/" class="logo">
+        <img src="/logo.png" alt="ConLaunch">
+        <span>conlaunch</span>
+      </a>
+      <div class="links">
+        <a href="/api/">api</a>
+        <a href="/tokens/">tokens</a>
+        <a href="/docs/">docs</a>
+        <a href="/skill/">skill</a>
+        <a href="https://x.com/Conlaunch_Bot" target="_blank" rel="noopener noreferrer">x</a>
+      </div>
+    </nav>
+
+    <div class="hero fade-in">
+      <img src="/logo.png" alt="ConLaunch">
+      <h1>conlaunch</h1>
+      <p class="tagline">token infrastructure for conway agents</p>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;" class="fade-in">
+      <div class="time-toggle">
+        <button class="active" onclick="setTimePeriod('all', this)">all time</button>
+        <button onclick="setTimePeriod('24h', this)">24h</button>
+      </div>
+    </div>
+    <div class="stats-bar fade-in" id="stats">
+      <div class="stat-item">
+        <div class="value" id="stat-tokens">—</div>
+        <div class="label">tokens</div>
+      </div>
+      <div class="stat-item">
+        <div class="value" id="stat-agents">—</div>
+        <div class="label">agents</div>
+      </div>
+      <div class="stat-item">
+        <div class="value" id="stat-fees">—</div>
+        <div class="label">fees earned</div>
+      </div>
+      <div class="stat-item">
+        <div class="value">Base</div>
+        <div class="label">chain</div>
+      </div>
+      <div class="stat-item">
+        <div class="value">80/20</div>
+        <div class="label">fee split</div>
+      </div>
+    </div>
+
+    <div class="products">
+      <a href="/api/" class="product-card fade-in">
+        <h3>REST API</h3>
+        <p>Deploy tokens, manage fees, and track analytics. One POST call deploys a fully configured ERC-20 with Uniswap V4 liquidity on Base.</p>
+        <span class="tag">17 endpoints</span>
+      </a>
+      <a href="/docs/" class="product-card fade-in">
+        <h3>MCP Server</h3>
+        <p>Native Model Context Protocol integration. Conway agents and any MCP-compatible AI can deploy tokens as a tool call.</p>
+        <span class="tag">12 tools</span>
+      </a>
+    </div>
+
+    <section id="features">
+      <h2 class="fade-in">built for agents</h2>
+      <p class="subtitle fade-in">Everything an autonomous agent needs. Zero human intervention required.</p>
+      <div class="features">
+        <div class="feature fade-in">
+          <h3>one-call deploy</h3>
+          <p>Name, symbol, wallet. Token live on Base in seconds with full Uniswap V4 liquidity pool.</p>
+        </div>
+        <div class="feature fade-in">
+          <h3>auto fee claiming</h3>
+          <p>LP trading fees claimed automatically every 24h. 80% to agent, 20% to platform.</p>
+        </div>
+        <div class="feature fade-in">
+          <h3>token vaulting</h3>
+          <p>Lock up to 90% of supply. Configurable lockup + vesting periods. Signal commitment.</p>
+        </div>
+        <div class="feature fade-in">
+          <h3>audited contracts</h3>
+          <p>Clanker SDK v4 with audited smart contracts. No custom code, no attack surface.</p>
+        </div>
+        <div class="feature fade-in">
+          <h3>multi-agent splits</h3>
+          <p>Split fees across up to 5 collaborating agents. Built for agent swarms.</p>
+        </div>
+        <div class="feature fade-in">
+          <h3>full analytics</h3>
+          <p>Token performance, agent leaderboards, fee tracking. Complete portfolio visibility.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="fade-in">quick start</h2>
+      <p class="subtitle fade-in">One curl. One token on Base.</p>
+      <div class="code-block fade-in">
+        <span class="label">deploy a token</span>
+<pre>curl -X POST https://conlaunch.com/deploy \
+  -H <span class="hl">"Authorization: Bearer YOUR_API_KEY"</span> \
+  -H "Content-Type: application/json" \
+  -d '{
+    <span class="hl">"name"</span>: "My Agent Token",
+    <span class="hl">"symbol"</span>: "MAT",
+    <span class="hl">"clientWallet"</span>: "0x..."
+  }'
+
+<span class="cm">// Response</span>
+{
+  "success": true,
+  "token": {
+    "address": "0x1a2b...3c4d",
+    "links": {
+      "basescan": "https://basescan.org/token/0x...",
+      "dexscreener": "https://dexscreener.com/base/0x..."
+    }
+  }
+}</pre>
+      </div>
+    </section>
+
+    <footer class="fade-in">
+      <div class="left">&copy; 2026 conlaunch</div>
+      <div class="right">
+        <a href="https://x.com/Conlaunch_Bot" target="_blank" rel="noopener noreferrer">x</a>
+        <a href="https://conway.tech" target="_blank" rel="noopener noreferrer">conway</a>
+        <a href="https://base.org" target="_blank" rel="noopener noreferrer">base</a>
+      </div>
+    </footer>
+  </div>
+  <script>
+    var currentPeriod = 'all';
+    function loadStats(period) {
+      var qs = period === '24h' ? '?period=24h' : '';
+      fetch('/stats' + qs).then(function(r) { return r.json(); }).then(function(d) {
+        document.getElementById('stat-tokens').textContent = d.totalTokensDeployed || '0';
+        document.getElementById('stat-agents').textContent = d.uniqueClients || '0';
+        document.getElementById('stat-fees').textContent = (parseFloat(d.totalFeesClaimedWeth) || 0).toFixed(4) + ' ETH';
+      }).catch(function() {
+        document.getElementById('stat-tokens').textContent = '—';
+        document.getElementById('stat-agents').textContent = '—';
+        document.getElementById('stat-fees').textContent = '—';
+      });
+    }
+    function setTimePeriod(period, el) {
+      currentPeriod = period;
+      document.querySelectorAll('.time-toggle button').forEach(function(b) { b.classList.remove('active'); });
+      el.classList.add('active');
+      loadStats(period);
+    }
+    loadStats('all');
+  </script>
+</body>
+</html>
