@@ -118,12 +118,12 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
   // Security headers
   app.use("/*", secureHeaders());
 
-  // Cloudflare-only gate (production) — block direct access to Render origin
+  // Block direct access to Render origin — only allow requests via conlaunch.com
   if (IS_PRODUCTION) {
+    const ALLOWED_HOSTS = ["conlaunch.com", "www.conlaunch.com"];
     app.use("/*", async (c, next) => {
-      const cfRay = c.req.header("CF-Ray");
-      const cfIp = c.req.header("CF-Connecting-IP");
-      if (!cfRay && !cfIp) {
+      const host = (c.req.header("Host") || "").split(":")[0].toLowerCase();
+      if (!ALLOWED_HOSTS.includes(host)) {
         return c.text("", 403);
       }
       await next();
