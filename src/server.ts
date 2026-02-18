@@ -13,7 +13,87 @@ import { validateLaunch } from "./validation.js";
 import { getTokenAnalytics, getAgentAnalytics, getLeaderboard } from "./analytics.js";
 import { checkRateLimit, formatCooldown } from "./ratelimit.js";
 import { uploadImage } from "./image.js";
+import { formatEther } from "viem";
 import type { Address } from "viem";
+
+// ── On-chain fee aggregation cache ──
+
+interface FeeCache {
+  totalWeth: string;
+  tokens: Array<{ address: string; platformWeth: string; clientWeth: string; totalWeth: string }>;
+  cachedAt: string;
+}
+
+let feeCache: FeeCache | null = null;
+let feeCacheTime = 0;
+const FEE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function aggregateOnChainFees(
+  platformWallet: `0x${string}`,
+  clankerInstance: any
+): Promise<FeeCache> {
+  // Return cache if fresh
+  if (feeCache && Date.now() - feeCacheTime < FEE_CACHE_TTL) {
+    return feeCache;
+  }
+
+  const tokens = getAllTokens("active");
+  let totalWei = 0n;
+  const perToken: FeeCache["tokens"] = [];
+
+  // Process all tokens in parallel (batched to avoid RPC overload)
+  const BATCH_SIZE = 5;
+  for (let i = 0; i < tokens.length; i += BATCH_SIZE) {
+    const batch = tokens.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map(async (token) => {
+        const addr = ((token as any).token_address || (token as any).tokenAddress) as `0x${string}`;
+        const clientWallet = ((token as any).client_wallet || (token as any).clientWallet) as `0x${string}` | undefined;
+
+        let platformAmount = 0n;
+        let clientAmount = 0n;
+
+        try {
+          platformAmount = await clankerInstance.availableRewards({
+            token: addr,
+            rewardRecipient: platformWallet,
+          });
+        } catch {}
+
+        if (clientWallet && clientWallet.toLowerCase() !== platformWallet.toLowerCase()) {
+          try {
+            clientAmount = await clankerInstance.availableRewards({
+              token: addr,
+              rewardRecipient: clientWallet,
+            });
+          } catch {}
+        }
+
+        const tokenTotal = platformAmount + clientAmount;
+        totalWei += tokenTotal;
+
+        return {
+          address: addr,
+          platformWeth: formatEther(platformAmount),
+          clientWeth: formatEther(clientAmount),
+          totalWeth: formatEther(tokenTotal),
+        };
+      })
+    );
+
+    for (const r of results) {
+      if (r.status === "fulfilled") perToken.push(r.value);
+    }
+  }
+
+  feeCache = {
+    totalWeth: formatEther(totalWei),
+    tokens: perToken,
+    cachedAt: new Date().toISOString(),
+  };
+  feeCacheTime = Date.now();
+  return feeCache;
+}
 
 // ── Helpers ──
 
@@ -169,6 +249,16 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
   app.get("/stats", (c) => {
     const period = c.req.query("period"); // "24h" or omit for all-time
     return c.json(getStats(period || undefined));
+  });
+
+  // Aggregated on-chain fees (cached 5min)
+  app.get("/fees/aggregate", async (c) => {
+    try {
+      const result = await aggregateOnChainFees(platformWallet, clankerInstance);
+      return c.json(result);
+    } catch (err: any) {
+      return c.json({ totalWeth: "0", tokens: [], cachedAt: null, error: sanitizeError(err) });
+    }
   });
 
   // ── Preview / Validate (public — no auth needed) ──

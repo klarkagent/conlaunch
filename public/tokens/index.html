@@ -203,6 +203,7 @@
     var API = '', currentPage = 1, totalPages = 1, currentSort = 'newest';
     var currentPeriod = 'all';
     var ethPrice = 0;
+    var onChainFees = {}; // address → { platformWeth, clientWeth, totalWeth }
 
     function esc(s) {
       var d = document.createElement('div');
@@ -239,17 +240,33 @@
       fetch(API + '/stats' + qs).then(function(r) { return r.json(); }).then(function(d) {
         document.getElementById('stat-total').textContent = d.totalTokensDeployed || '0';
         document.getElementById('stat-agents').textContent = d.uniqueClients || '0';
-        var feesWeth = parseFloat(d.totalFeesClaimedWeth) || 0;
-        if (feesWeth > 0 && ethPrice > 0) {
-          document.getElementById('stat-fees').textContent = formatUsd(feesWeth * ethPrice);
-        } else if (feesWeth > 0) {
-          document.getElementById('stat-fees').textContent = feesWeth.toFixed(4) + ' ETH';
-        } else {
-          document.getElementById('stat-fees').textContent = '$0';
-        }
       }).catch(function() {
         document.getElementById('stat-total').textContent = '—';
         document.getElementById('stat-agents').textContent = '—';
+      });
+    }
+
+    function loadOnChainFees() {
+      document.getElementById('stat-fees').textContent = '...';
+      fetch(API + '/fees/aggregate').then(function(r) { return r.json(); }).then(function(d) {
+        // Store per-token fees for card rendering
+        if (d.tokens) {
+          d.tokens.forEach(function(t) {
+            onChainFees[t.address.toLowerCase()] = t;
+          });
+        }
+        // Total fees display
+        var weth = parseFloat(d.totalWeth) || 0;
+        if (weth > 0 && ethPrice > 0) {
+          document.getElementById('stat-fees').textContent = formatUsd(weth * ethPrice);
+        } else if (weth > 0) {
+          document.getElementById('stat-fees').textContent = weth.toFixed(4) + ' ETH';
+        } else {
+          document.getElementById('stat-fees').textContent = '$0';
+        }
+        // Re-render tokens if already loaded (to show per-token fees)
+        if (currentPage >= 1) loadTokens(currentPage);
+      }).catch(function() {
         document.getElementById('stat-fees').textContent = '—';
       });
     }
@@ -265,7 +282,9 @@
       var image = t.image || '';
       var website = t.website || '';
       var twitter = t.twitter || '';
-      var feesWeth = parseFloat(t.total_fees_claimed_weth || t.totalFeesClaimedWeth || '0');
+      // Use on-chain fees if available, fallback to DB
+      var onChain = onChainFees[addr.toLowerCase()];
+      var feesWeth = onChain ? parseFloat(onChain.totalWeth) || 0 : parseFloat(t.total_fees_claimed_weth || t.totalFeesClaimedWeth || '0');
       var shareText = encodeURIComponent(name + ' ($' + symbol.toUpperCase() + ') on Base\n\nDeployed via @Conlaunch_Bot\n\nhttps://dexscreener.com/base/' + addr);
 
       // Image or letter avatar
@@ -359,6 +378,8 @@
     fetchEthPrice();
     loadStats();
     loadTokens(1);
+    // Fetch on-chain fees (slower, will re-render tokens when ready)
+    setTimeout(loadOnChainFees, 500);
   </script>
 </body>
 </html>

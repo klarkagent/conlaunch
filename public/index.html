@@ -471,14 +471,22 @@
       fetch('/stats' + qs).then(function(r) { return r.json(); }).then(function(d) {
         document.getElementById('stat-tokens').textContent = d.totalTokensDeployed || '0';
         document.getElementById('stat-agents').textContent = d.uniqueClients || '0';
-        var weth = parseFloat(d.totalFeesClaimedWeth) || 0;
-        document.getElementById('stat-fees').textContent = formatFees(weth);
       }).catch(function() {
         document.getElementById('stat-tokens').textContent = '—';
         document.getElementById('stat-agents').textContent = '—';
+      });
+    }
+
+    function loadOnChainFees() {
+      document.getElementById('stat-fees').textContent = '...';
+      fetch('/fees/aggregate').then(function(r) { return r.json(); }).then(function(d) {
+        var weth = parseFloat(d.totalWeth) || 0;
+        document.getElementById('stat-fees').textContent = formatFees(weth);
+      }).catch(function() {
         document.getElementById('stat-fees').textContent = '—';
       });
     }
+
     function setTimePeriod(period, el) {
       currentPeriod = period;
       document.querySelectorAll('.time-toggle button').forEach(function(b) { b.classList.remove('active'); });
@@ -486,6 +494,7 @@
       loadStats(period);
     }
     loadStats('all');
+    loadOnChainFees();
   </script>
 </body>
 </html>
