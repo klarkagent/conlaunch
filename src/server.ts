@@ -92,8 +92,8 @@ async function aggregateFees(): Promise<FeeCache> {
 
 // ── Helpers ──
 
-function errorResponse(message: string, status: number, requestId: string) {
-  return { error: message, status, requestId };
+function errorResponse(message: string, status: number) {
+  return { error: message, status };
 }
 
 function sanitizeError(err: any): string {
@@ -111,32 +111,48 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
 
   const API_KEY = process.env.API_KEY;
   const MAX_BODY_SIZE = 1024 * 1024; // 1MB
+  const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
   // ── Middleware ──
 
   // Security headers
   app.use("/*", secureHeaders());
 
-  // CORS
+  // Cloudflare-only gate (production) — block direct access to Render origin
+  if (IS_PRODUCTION) {
+    app.use("/*", async (c, next) => {
+      const cfRay = c.req.header("CF-Ray");
+      const cfIp = c.req.header("CF-Connecting-IP");
+      if (!cfRay && !cfIp) {
+        return c.text("", 403);
+      }
+      await next();
+    });
+  }
+
+  // CORS — strict in production, open in dev
   const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
-    : ["*"];
+    : IS_PRODUCTION ? ["https://conlaunch.com"] : ["*"];
   app.use("/*", cors({
     origin: allowedOrigins.includes("*") ? "*" : allowedOrigins,
     allowMethods: ["GET", "POST", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization", "X-Request-ID"],
+    allowHeaders: ["Content-Type", "Authorization"],
     maxAge: 86400,
   }));
 
-  // Request ID + logging
+  // Request ID (generated server-side only — never trust client) + logging
   app.use("/*", async (c, next) => {
-    const requestId = c.req.header("X-Request-ID") || crypto.randomUUID().slice(0, 8);
+    const requestId = crypto.randomUUID().slice(0, 8);
     c.set("requestId" as any, requestId);
-    c.header("X-Request-ID", requestId);
 
     const start = Date.now();
     await next();
     const ms = Date.now() - start;
+
+    // Strip server identity headers
+    c.res.headers.delete("X-Powered-By");
+    c.res.headers.delete("Server");
 
     const method = c.req.method;
     const path = c.req.path;
@@ -148,7 +164,7 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
   app.onError((err, c) => {
     const requestId = (c.get as any)("requestId") || "unknown";
     console.error(`[${new Date().toISOString()}] ERROR [${requestId}]:`, err.message);
-    return c.json(errorResponse("Internal server error", 500, requestId), 500);
+    return c.json(errorResponse("Internal server error", 500), 500);
   });
 
   // API key auth middleware for write endpoints
@@ -156,8 +172,7 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
     if (!API_KEY) return null; // No key configured = open mode (dev)
     const auth = c.req.header("Authorization");
     if (!auth || auth !== `Bearer ${API_KEY}`) {
-      const requestId = (c.get as any)("requestId") || "unknown";
-      return c.json(errorResponse("Unauthorized — invalid or missing API key", 401, requestId), 401);
+      return c.json(errorResponse("Unauthorized", 401), 401);
     }
     return null;
   }
@@ -166,14 +181,12 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
   async function parseBody(c: any): Promise<any | Response> {
     const contentLength = parseInt(c.req.header("Content-Length") || "0");
     if (contentLength > MAX_BODY_SIZE) {
-      const requestId = (c.get as any)("requestId") || "unknown";
-      return c.json(errorResponse("Request body too large (max 1MB)", 413, requestId), 413);
+      return c.json(errorResponse("Request body too large", 413), 413);
     }
     try {
       return await c.req.json();
     } catch {
-      const requestId = (c.get as any)("requestId") || "unknown";
-      return c.json(errorResponse("Invalid JSON body", 400, requestId), 400);
+      return c.json(errorResponse("Invalid JSON body", 400), 400);
     }
   }
 
@@ -218,14 +231,10 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
       return c.json({
         name: "ConLaunch",
         description: "Native Conway Agent Launchpad",
-        version: "0.1.0",
         website: "https://conlaunch.com",
         chain: "base",
         chainId: 8453,
-        endpoints: {
-          public: ["GET /", "GET /health", "GET /stats", "GET /tokens", "GET /tokens/:address", "GET /tokens/:address/share", "GET /clients/:wallet/tokens", "GET /rate-limit/:wallet", "GET /fees/:tokenAddress", "POST /preview", "POST /deploy", "GET /analytics/token/:address", "GET /analytics/agent/:wallet", "GET /analytics/leaderboard"],
-          authenticated: ["POST /upload", "POST /fees/:tokenAddress/claim", "POST /fees/claim-all"],
-        },
+        docs: "https://conlaunch.com/docs/",
       });
     }
     // Serve website HTML
@@ -279,7 +288,7 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
   app.get("/rate-limit/:wallet", (c) => {
     const wallet = c.req.param("wallet");
     if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
-      return c.json(errorResponse("Invalid wallet address", 400, (c.get as any)("requestId")), 400);
+      return c.json(errorResponse("Invalid wallet address", 400), 400);
     }
     const rl = checkRateLimit(wallet);
     return c.json({
@@ -314,17 +323,17 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
   app.get("/tokens/:address", (c) => {
     const address = c.req.param("address");
     if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-      return c.json(errorResponse("Invalid token address", 400, (c.get as any)("requestId")), 400);
+      return c.json(errorResponse("Invalid token address", 400), 400);
     }
     const token = getTokenByAddress(address);
-    if (!token) return c.json(errorResponse("Token not found", 404, (c.get as any)("requestId")), 404);
+    if (!token) return c.json(errorResponse("Token not found", 404), 404);
     return c.json(token);
   });
 
   app.get("/clients/:wallet/tokens", (c) => {
     const wallet = c.req.param("wallet");
     if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
-      return c.json(errorResponse("Invalid wallet address", 400, (c.get as any)("requestId")), 400);
+      return c.json(errorResponse("Invalid wallet address", 400), 400);
     }
     return c.json(getTokensByClient(wallet));
   });
@@ -334,10 +343,10 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
   app.get("/tokens/:address/share", (c) => {
     const address = c.req.param("address");
     if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-      return c.json(errorResponse("Invalid token address", 400, (c.get as any)("requestId")), 400);
+      return c.json(errorResponse("Invalid token address", 400), 400);
     }
     const token = getTokenByAddress(address);
-    if (!token) return c.json(errorResponse("Token not found", 404, (c.get as any)("requestId")), 404);
+    if (!token) return c.json(errorResponse("Token not found", 404), 404);
     const text = `${token.name} ($${token.symbol.toUpperCase()}) on Base\n\nDeployed via @Conlaunch_Bot\n\nhttps://dexscreener.com/base/${address}`;
     return c.json({
       text,
@@ -351,12 +360,11 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
 
     const body = await parseBody(c);
     if (body instanceof Response) return body;
-    const requestId = (c.get as any)("requestId") || "unknown";
 
     // Validate
     const validation = validateLaunch(body);
     if (!validation.valid) {
-      return c.json({ error: "Validation failed", errors: validation.errors, requestId }, 400);
+      return c.json({ error: "Validation failed", errors: validation.errors }, 400);
     }
 
     // Rate limit
@@ -366,27 +374,25 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
         error: "Rate limited: 1 launch per 24h",
         nextAllowedAt: rl.nextAllowedAt,
         cooldown: formatCooldown(rl.remainingMs),
-        requestId,
       }, 429);
     }
 
     // Verify agent
     const agent = await verifyAgent(body.clientWallet as Address, body.agentId);
     if (!agent) {
-      return c.json(errorResponse("Agent verification failed", 403, requestId), 403);
+      return c.json(errorResponse("Agent verification failed", 403), 403);
     }
 
     // Deploy
     try {
       const result = await deployToken(body, platformWallet, clankerInstance);
       if (!result.success) {
-        return c.json({ error: sanitizeError(result.error), requestId }, 400);
+        return c.json({ error: sanitizeError(result.error) }, 400);
       }
 
       const shareText = `${body.name} ($${body.symbol.toUpperCase()}) is now live on Base!\n\nDeployed via @Conlaunch_Bot\n\nhttps://dexscreener.com/base/${result.tokenAddress}`;
       return c.json({
         success: true,
-        requestId,
         token: {
           address: result.tokenAddress,
           txHash: result.txHash,
@@ -403,7 +409,7 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
         message: `${body.name} ($${body.symbol.toUpperCase()}) deployed on Base!`,
       });
     } catch (err: any) {
-      return c.json({ error: sanitizeError(err), requestId }, 500);
+      return c.json({ error: sanitizeError(err) }, 500);
     }
   });
 
@@ -417,7 +423,7 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
     if (body instanceof Response) return body;
 
     if (!body.image) {
-      return c.json(errorResponse("image field required", 400, (c.get as any)("requestId")), 400);
+      return c.json(errorResponse("image field required", 400), 400);
     }
     const result = await uploadImage(body.image, body.name);
     return c.json(result);
@@ -428,7 +434,7 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
   app.get("/fees/:tokenAddress", async (c) => {
     const addr = c.req.param("tokenAddress");
     if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
-      return c.json(errorResponse("Invalid token address", 400, (c.get as any)("requestId")), 400);
+      return c.json(errorResponse("Invalid token address", 400), 400);
     }
     try {
       const result = await checkFees(addr, platformWallet, clankerInstance);
@@ -444,7 +450,7 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
 
     const addr = c.req.param("tokenAddress");
     if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
-      return c.json(errorResponse("Invalid token address", 400, (c.get as any)("requestId")), 400);
+      return c.json(errorResponse("Invalid token address", 400), 400);
     }
     try {
       const result = await claimFees(addr, platformWallet, clankerInstance);
@@ -472,17 +478,17 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
   app.get("/analytics/token/:address", (c) => {
     const addr = c.req.param("address");
     if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
-      return c.json(errorResponse("Invalid token address", 400, (c.get as any)("requestId")), 400);
+      return c.json(errorResponse("Invalid token address", 400), 400);
     }
     const analytics = getTokenAnalytics(addr);
-    if (!analytics) return c.json(errorResponse("Token not found", 404, (c.get as any)("requestId")), 404);
+    if (!analytics) return c.json(errorResponse("Token not found", 404), 404);
     return c.json(analytics);
   });
 
   app.get("/analytics/agent/:wallet", (c) => {
     const wallet = c.req.param("wallet");
     if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
-      return c.json(errorResponse("Invalid wallet address", 400, (c.get as any)("requestId")), 400);
+      return c.json(errorResponse("Invalid wallet address", 400), 400);
     }
     return c.json(getAgentAnalytics(wallet));
   });
@@ -501,11 +507,10 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
 
     const body = await parseBody(c);
     if (body instanceof Response) return body;
-    const requestId = (c.get as any)("requestId") || "unknown";
 
     const { name, symbol, tokenAddress, txHash, clientWallet, clientBps, platformBps, vaultPercentage, description, image, website, twitter } = body;
     if (!name || !symbol || !tokenAddress || !txHash || !clientWallet) {
-      return c.json(errorResponse("Missing required fields", 400, requestId), 400);
+      return c.json(errorResponse("Missing required fields", 400), 400);
     }
 
     try {
@@ -513,14 +518,14 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
       const token = recordDeployment(name, symbol, tokenAddress, txHash, clientWallet, clientBps || 8000, platformBps || 2000, vaultPercentage || 0, { description, image, website, twitter });
       return c.json({ success: true, token });
     } catch (err: any) {
-      return c.json(errorResponse(err.message, 400, requestId), 400);
+      return c.json(errorResponse(err.message, 400), 400);
     }
   });
 
   // ── 404 ──
 
   app.notFound((c) => {
-    return c.json(errorResponse("Not found", 404, (c.get as any)("requestId") || "unknown"), 404);
+    return c.json(errorResponse("Not found", 404), 404);
   });
 
   return app;
