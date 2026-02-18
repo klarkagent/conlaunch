@@ -28,6 +28,9 @@ let feeCache: FeeCache | null = null;
 let feeCacheTime = 0;
 const FEE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Max sane reward per token: 10 ETH in wei (anything above is likely bad data)
+const MAX_SANE_REWARD = 10n * 10n ** 18n;
+
 async function aggregateOnChainFees(
   platformWallet: `0x${string}`,
   clankerInstance: any
@@ -38,7 +41,6 @@ async function aggregateOnChainFees(
   }
 
   const tokens = getAllTokens("active");
-  let totalWei = 0n;
   const perToken: FeeCache["tokens"] = [];
 
   // Process all tokens in parallel (batched to avoid RPC overload)
@@ -54,24 +56,34 @@ async function aggregateOnChainFees(
         let clientAmount = 0n;
 
         try {
-          platformAmount = await clankerInstance.availableRewards({
+          const raw = await clankerInstance.availableRewards({
             token: addr,
             rewardRecipient: platformWallet,
           });
+          platformAmount = typeof raw === "bigint" ? raw : 0n;
         } catch {}
 
         if (clientWallet && clientWallet.toLowerCase() !== platformWallet.toLowerCase()) {
           try {
-            clientAmount = await clankerInstance.availableRewards({
+            const raw = await clankerInstance.availableRewards({
               token: addr,
               rewardRecipient: clientWallet,
             });
+            clientAmount = typeof raw === "bigint" ? raw : 0n;
           } catch {}
         }
 
-        const tokenTotal = platformAmount + clientAmount;
-        totalWei += tokenTotal;
+        // Sanity check: skip absurd values (bad data from non-Clanker contracts etc)
+        if (platformAmount > MAX_SANE_REWARD) {
+          console.warn(`[fees] Skipping absurd platform reward for ${addr}: ${formatEther(platformAmount)} ETH`);
+          platformAmount = 0n;
+        }
+        if (clientAmount > MAX_SANE_REWARD) {
+          console.warn(`[fees] Skipping absurd client reward for ${addr}: ${formatEther(clientAmount)} ETH`);
+          clientAmount = 0n;
+        }
 
+        const tokenTotal = platformAmount + clientAmount;
         return {
           address: addr,
           platformWeth: formatEther(platformAmount),
@@ -86,12 +98,20 @@ async function aggregateOnChainFees(
     }
   }
 
+  // Compute total from individual results (safe — no parallel mutation)
+  let totalWei = 0n;
+  for (const t of perToken) {
+    const wei = BigInt(Math.round(parseFloat(t.totalWeth) * 1e18));
+    totalWei += wei;
+  }
+
   feeCache = {
     totalWeth: formatEther(totalWei),
     tokens: perToken,
     cachedAt: new Date().toISOString(),
   };
   feeCacheTime = Date.now();
+  console.log(`[fees] Aggregated ${perToken.length} tokens, total: ${feeCache.totalWeth} ETH`);
   return feeCache;
 }
 
