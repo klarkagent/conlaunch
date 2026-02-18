@@ -30,6 +30,10 @@ function initSchema() {
       client_bps INTEGER NOT NULL,
       platform_bps INTEGER NOT NULL,
       vault_percentage INTEGER DEFAULT 0,
+      description TEXT,
+      image TEXT,
+      website TEXT,
+      twitter TEXT,
       deployed_at TEXT NOT NULL DEFAULT (datetime('now')),
       total_fees_claimed_weth TEXT DEFAULT '0',
       total_fees_claimed_token TEXT DEFAULT '0',
@@ -50,6 +54,17 @@ function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_tokens_status ON tokens(status);
     CREATE INDEX IF NOT EXISTS idx_claims_token ON fee_claims(token_address);
   `);
+
+  // Migrate: add new columns to existing tables (safe — ALTER TABLE ADD COLUMN is no-op if column exists)
+  const migrations = [
+    "ALTER TABLE tokens ADD COLUMN description TEXT",
+    "ALTER TABLE tokens ADD COLUMN image TEXT",
+    "ALTER TABLE tokens ADD COLUMN website TEXT",
+    "ALTER TABLE tokens ADD COLUMN twitter TEXT",
+  ];
+  for (const sql of migrations) {
+    try { d.exec(sql); } catch {}
+  }
 
   // Seed: ensure known deployed tokens always exist in DB
   seedKnownTokens(d);
@@ -86,14 +101,18 @@ export function recordDeployment(
   clientWallet: string,
   clientBps: number,
   platformBps: number,
-  vaultPercentage: number
+  vaultPercentage: number,
+  meta?: { description?: string; image?: string; website?: string; twitter?: string }
 ): TokenRecord {
   const d = getDb();
   const stmt = d.prepare(`
-    INSERT INTO tokens (name, symbol, token_address, tx_hash, client_wallet, client_bps, platform_bps, vault_percentage)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO tokens (name, symbol, token_address, tx_hash, client_wallet, client_bps, platform_bps, vault_percentage, description, image, website, twitter)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  const result = stmt.run(name, symbol, tokenAddress, txHash, clientWallet, clientBps, platformBps, vaultPercentage);
+  const result = stmt.run(
+    name, symbol, tokenAddress, txHash, clientWallet, clientBps, platformBps, vaultPercentage,
+    meta?.description || null, meta?.image || null, meta?.website || null, meta?.twitter || null
+  );
   return getToken(result.lastInsertRowid as number)!;
 }
 

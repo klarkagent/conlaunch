@@ -198,7 +198,13 @@ export async function deployToken(
       req.clientWallet,
       10000 - platformFeeBps,
       platformFeeBps,
-      req.vault?.percentage || 0
+      req.vault?.percentage || 0,
+      {
+        description: req.description,
+        image: req.image,
+        website: req.website,
+        twitter: req.twitter,
+      }
     );
 
     return {

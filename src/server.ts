@@ -418,14 +418,14 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
     if (body instanceof Response) return body;
     const requestId = (c.get as any)("requestId") || "unknown";
 
-    const { name, symbol, tokenAddress, txHash, clientWallet, clientBps, platformBps, vaultPercentage } = body;
+    const { name, symbol, tokenAddress, txHash, clientWallet, clientBps, platformBps, vaultPercentage, description, image, website, twitter } = body;
     if (!name || !symbol || !tokenAddress || !txHash || !clientWallet) {
       return c.json(errorResponse("Missing required fields", 400, requestId), 400);
     }
 
     try {
       const { recordDeployment } = await import("./db.js");
-      const token = recordDeployment(name, symbol, tokenAddress, txHash, clientWallet, clientBps || 8000, platformBps || 2000, vaultPercentage || 0);
+      const token = recordDeployment(name, symbol, tokenAddress, txHash, clientWallet, clientBps || 8000, platformBps || 2000, vaultPercentage || 0, { description, image, website, twitter });
       return c.json({ success: true, token });
     } catch (err: any) {
       return c.json(errorResponse(err.message, 400, requestId), 400);

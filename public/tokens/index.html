@@ -25,7 +25,7 @@
       background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
       background-size: 48px 48px; pointer-events: none; z-index: 0;
     }
-    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
     .fade-in { opacity: 0; transform: translateY(16px); animation: fadeUp 0.6s ease forwards; }
     .fade-in:nth-child(2) { animation-delay: 0.1s; }
     @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
@@ -52,7 +52,7 @@
     }
     .time-toggle button.active { background: var(--accent); color: var(--bg); }
 
-    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 24px 0; }
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 24px 0; }
     .stat-card {
       background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
       padding: 20px; text-align: center;
@@ -70,21 +70,44 @@
     .filter-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 
     .token-list { margin-top: 8px; }
-    .token-row {
-      display: grid; grid-template-columns: 1fr 100px 36px;
-      align-items: center; gap: 16px; padding: 16px 20px;
+
+    .token-card {
+      display: flex; gap: 14px; padding: 16px 20px;
       background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-      margin-bottom: 8px; transition: all 0.2s; text-decoration: none; color: inherit;
+      margin-bottom: 8px; transition: all 0.2s; align-items: flex-start;
     }
-    .token-row:hover { border-color: var(--border-hover); background: var(--surface-hover); }
-    .token-name { font-family: "JetBrains Mono", monospace; font-size: 14px; font-weight: 600; color: var(--accent); }
-    .token-symbol { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text-dim); margin-left: 8px; }
+    .token-card:hover { border-color: var(--border-hover); background: var(--surface-hover); }
+
+    .token-img {
+      width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+      background: #1a1a1a; display: flex; align-items: center; justify-content: center;
+      font-family: "JetBrains Mono", monospace; font-size: 16px; font-weight: 700; color: var(--text-dim);
+      overflow: hidden;
+    }
+    .token-img img { width: 100%; height: 100%; object-fit: cover; }
+
+    .token-info { flex: 1; min-width: 0; }
+    .token-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .token-name { font-family: "JetBrains Mono", monospace; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; }
+    .token-name:hover { text-decoration: underline; }
+    .token-symbol { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text-dim); }
     .token-address { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-    .token-date { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text-dim); text-align: right; }
+    .token-desc { font-size: 12px; color: var(--text-dim); margin-top: 4px; line-height: 1.4; max-width: 500px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .token-links { display: flex; gap: 10px; margin-top: 4px; }
+    .token-links a {
+      font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--blue);
+      text-decoration: none; transition: color 0.2s;
+    }
+    .token-links a:hover { color: var(--accent); text-decoration: underline; }
+
+    .token-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+    .token-fees { font-family: "JetBrains Mono", monospace; font-size: 13px; font-weight: 600; color: var(--green); text-align: right; }
+    .token-fees-usd { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--text-dim); text-align: right; }
+    .token-date { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--text-dim); text-align: right; }
+    .token-actions { display: flex; gap: 6px; margin-top: 2px; }
     .token-share {
       font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--text-dim);
-      text-align: center; text-decoration: none; padding: 4px; border-radius: 4px;
-      transition: color 0.2s;
+      text-decoration: none; padding: 2px 6px; border-radius: 4px; transition: color 0.2s;
     }
     .token-share:hover { color: var(--accent); }
 
@@ -103,15 +126,6 @@
     .pagination button:disabled { opacity: 0.3; cursor: not-allowed; }
     .pagination .page-info { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text-dim); line-height: 36px; }
 
-    .table-header {
-      display: grid; grid-template-columns: 1fr 100px 36px;
-      gap: 16px; padding: 8px 20px;
-      font-family: "JetBrains Mono", monospace; font-size: 11px;
-      color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
-    }
-    .table-header span:nth-child(2) { text-align: right; }
-    .table-header span:last-child { text-align: center; }
-
     footer {
       border-top: 1px solid var(--border); padding: 32px 0;
       display: flex; justify-content: space-between; align-items: center; margin-top: 80px;
@@ -125,9 +139,9 @@
       .page-hero { flex-direction: column; gap: 16px; }
       .page-hero h1 { font-size: 24px; }
       .stats-row { grid-template-columns: repeat(2, 1fr); }
-      .token-row { grid-template-columns: 1fr 80px; }
-      .token-row > :nth-child(3) { display: none; }
-      .table-header { display: none; }
+      .token-card { flex-direction: column; gap: 8px; }
+      .token-right { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+      .token-img { width: 32px; height: 32px; }
       footer { flex-direction: column; gap: 12px; text-align: center; }
     }
   </style>
@@ -154,21 +168,19 @@
       </div>
     </div>
 
-    <div class="stats-row fade-in" style="grid-template-columns: repeat(2, 1fr);">
+    <div class="stats-row fade-in">
       <div class="stat-card"><div class="value" id="stat-total">—</div><div class="label">tokens</div></div>
       <div class="stat-card"><div class="value" id="stat-agents">—</div><div class="label">agents</div></div>
+      <div class="stat-card"><div class="value" id="stat-fees">—</div><div class="label">fees earned</div></div>
     </div>
 
     <div class="filter-bar fade-in">
       <button class="filter-btn active" onclick="setSort('newest', this)">new</button>
-    </div>
-
-    <div class="table-header">
-      <span>token</span><span>deployed</span><span></span>
+      <button class="filter-btn" onclick="setSort('fees', this)">top fees</button>
     </div>
 
     <div class="token-list" id="token-list">
-      <div class="empty-state"><div class="icon">&#9678;</div><h3>no tokens yet</h3><p>Tokens deployed through ConLaunch will appear here.</p></div>
+      <div class="empty-state"><div class="icon">&#9678;</div><h3>loading...</h3></div>
     </div>
 
     <div class="pagination" id="pagination" style="display: none;">
@@ -189,13 +201,37 @@
 
   <script>
     var API = '', currentPage = 1, totalPages = 1, currentSort = 'newest';
-
     var currentPeriod = 'all';
+    var ethPrice = 0;
 
     function esc(s) {
       var d = document.createElement('div');
-      d.appendChild(document.createTextNode(s));
+      d.appendChild(document.createTextNode(s || ''));
       return d.innerHTML;
+    }
+
+    function formatUsd(val) {
+      if (val >= 1000000) return '$' + (val / 1000000).toFixed(2) + 'M';
+      if (val >= 1000) return '$' + (val / 1000).toFixed(2) + 'K';
+      if (val >= 1) return '$' + val.toFixed(2);
+      if (val > 0) return '$' + val.toFixed(4);
+      return '$0';
+    }
+
+    function formatEth(val) {
+      var n = parseFloat(val);
+      if (isNaN(n) || n === 0) return '0 ETH';
+      if (n >= 1) return n.toFixed(4) + ' ETH';
+      if (n >= 0.0001) return n.toFixed(6) + ' ETH';
+      return '<0.0001 ETH';
+    }
+
+    // Fetch ETH price
+    function fetchEthPrice() {
+      fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd')
+        .then(function(r) { return r.json(); })
+        .then(function(d) { ethPrice = d.ethereum.usd || 0; })
+        .catch(function() { ethPrice = 0; });
     }
 
     function loadStats() {
@@ -203,10 +239,84 @@
       fetch(API + '/stats' + qs).then(function(r) { return r.json(); }).then(function(d) {
         document.getElementById('stat-total').textContent = d.totalTokensDeployed || '0';
         document.getElementById('stat-agents').textContent = d.uniqueClients || '0';
+        var feesWeth = parseFloat(d.totalFeesClaimedWeth) || 0;
+        if (feesWeth > 0 && ethPrice > 0) {
+          document.getElementById('stat-fees').textContent = formatUsd(feesWeth * ethPrice);
+        } else if (feesWeth > 0) {
+          document.getElementById('stat-fees').textContent = feesWeth.toFixed(4) + ' ETH';
+        } else {
+          document.getElementById('stat-fees').textContent = '$0';
+        }
       }).catch(function() {
         document.getElementById('stat-total').textContent = '—';
         document.getElementById('stat-agents').textContent = '—';
+        document.getElementById('stat-fees').textContent = '—';
       });
+    }
+
+    function renderTokenCard(t) {
+      var addr = t.token_address || t.tokenAddress || '';
+      var short = addr ? addr.slice(0, 6) + '...' + addr.slice(-4) : '';
+      var date = t.deployed_at || t.deployedAt;
+      var dateStr = date ? new Date(date + 'Z').toLocaleDateString() : '';
+      var name = t.name || '?';
+      var symbol = t.symbol || '?';
+      var desc = t.description || '';
+      var image = t.image || '';
+      var website = t.website || '';
+      var twitter = t.twitter || '';
+      var feesWeth = parseFloat(t.total_fees_claimed_weth || t.totalFeesClaimedWeth || '0');
+      var shareText = encodeURIComponent(name + ' ($' + symbol.toUpperCase() + ') on Base\n\nDeployed via @Conlaunch_Bot\n\nhttps://dexscreener.com/base/' + addr);
+
+      // Image or letter avatar
+      var imgHtml;
+      if (image) {
+        imgHtml = '<div class="token-img"><img src="' + esc(image) + '" alt="' + esc(name) + '" onerror="this.parentElement.textContent=\'' + esc(name.charAt(0).toUpperCase()) + '\'"></div>';
+      } else {
+        imgHtml = '<div class="token-img">' + esc(name.charAt(0).toUpperCase()) + '</div>';
+      }
+
+      // Links row
+      var linksHtml = '';
+      if (website || twitter) {
+        linksHtml = '<div class="token-links">';
+        if (website) linksHtml += '<a href="' + esc(website) + '" target="_blank" rel="noopener noreferrer">website</a>';
+        if (twitter) {
+          var twitterUrl = twitter.startsWith('http') ? twitter : 'https://x.com/' + twitter.replace('@', '');
+          linksHtml += '<a href="' + esc(twitterUrl) + '" target="_blank" rel="noopener noreferrer">@' + esc(twitter.replace('@', '').replace('https://x.com/', '')) + '</a>';
+        }
+        linksHtml += '</div>';
+      }
+
+      // Fees display
+      var feesHtml = '';
+      if (feesWeth > 0) {
+        feesHtml = '<div class="token-fees">' + formatEth(feesWeth.toString()) + '</div>';
+        if (ethPrice > 0) {
+          feesHtml += '<div class="token-fees-usd">' + formatUsd(feesWeth * ethPrice) + '</div>';
+        }
+      }
+
+      return '<div class="token-card">' +
+        imgHtml +
+        '<div class="token-info">' +
+          '<div class="token-top">' +
+            '<a class="token-name" href="https://dexscreener.com/base/' + addr + '" target="_blank" rel="noopener noreferrer">' + esc(name) + '</a>' +
+            '<span class="token-symbol">$' + esc(symbol.toUpperCase()) + '</span>' +
+          '</div>' +
+          '<div class="token-address">' + short + '</div>' +
+          (desc ? '<div class="token-desc">' + esc(desc) + '</div>' : '') +
+          linksHtml +
+        '</div>' +
+        '<div class="token-right">' +
+          feesHtml +
+          '<div class="token-date">' + dateStr + '</div>' +
+          '<div class="token-actions">' +
+            '<a href="https://basescan.org/token/' + addr + '" target="_blank" rel="noopener noreferrer" class="token-share" title="Basescan">scan</a>' +
+            '<a href="https://x.com/intent/tweet?text=' + shareText + '" target="_blank" rel="noopener noreferrer" class="token-share" title="Share on X">share</a>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
     }
 
     function loadTokens(page) {
@@ -217,18 +327,7 @@
           pag.style.display = 'none'; return;
         }
         totalPages = d.pagination.totalPages; currentPage = d.pagination.page;
-        list.innerHTML = d.tokens.map(function(t) {
-          var addr = t.token_address || t.tokenAddress || '';
-          var short = addr ? addr.slice(0, 6) + '...' + addr.slice(-4) : '';
-          var date = t.deployed_at || t.deployedAt;
-          var dateStr = date ? new Date(date).toLocaleDateString() : '';
-          var shareText = encodeURIComponent(t.name + ' ($' + (t.symbol || '').toUpperCase() + ') on Base\n\nDeployed via @Conlaunch_Bot\n\nhttps://dexscreener.com/base/' + addr);
-          return '<div class="token-row">' +
-            '<a href="https://basescan.org/token/' + addr + '" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit"><span class="token-name">' + esc(t.name || '?') + '</span><span class="token-symbol">$' + esc(t.symbol || '?') + '</span><div class="token-address">' + short + '</div></a>' +
-            '<div class="token-date">' + dateStr + '</div>' +
-            '<a href="https://x.com/intent/tweet?text=' + shareText + '" target="_blank" rel="noopener noreferrer" class="token-share" title="Share on X" onclick="arguments[0].stopPropagation()">&#119831;</a>' +
-            '</div>';
-        }).join('');
+        list.innerHTML = d.tokens.map(renderTokenCard).join('');
         pag.style.display = totalPages > 1 ? 'flex' : 'none';
         document.getElementById('page-info').textContent = currentPage + ' / ' + totalPages;
         document.getElementById('prev-btn').disabled = currentPage <= 1;
@@ -257,7 +356,9 @@
       if (next >= 1 && next <= totalPages) loadTokens(next);
     }
 
-    loadStats(); loadTokens(1);
+    fetchEthPrice();
+    loadStats();
+    loadTokens(1);
   </script>
 </body>
 </html>

@@ -52,6 +52,10 @@ export interface TokenRecord {
   clientBps: number;
   platformBps: number;
   vaultPercentage: number;
+  description: string | null;
+  image: string | null;
+  website: string | null;
+  twitter: string | null;
   deployedAt: string;
   totalFeesClaimedWeth: string;
   totalFeesClaimedToken: string;
