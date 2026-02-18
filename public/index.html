@@ -444,12 +444,35 @@
   </div>
   <script>
     var currentPeriod = 'all';
+    var ethPrice = 0;
+
+    function formatUsd(val) {
+      if (val >= 1000000) return '$' + (val / 1000000).toFixed(2) + 'M';
+      if (val >= 1000) return '$' + (val / 1000).toFixed(2) + 'K';
+      if (val >= 1) return '$' + val.toFixed(2);
+      if (val > 0) return '$' + val.toFixed(4);
+      return '$0';
+    }
+
+    function formatFees(weth) {
+      if (weth <= 0) return '$0';
+      if (ethPrice > 0) return formatUsd(weth * ethPrice);
+      if (weth >= 1) return weth.toFixed(4) + ' ETH';
+      return '<0.0001 ETH';
+    }
+
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd')
+      .then(function(r) { return r.json(); })
+      .then(function(d) { ethPrice = d.ethereum.usd || 0; })
+      .catch(function() {});
+
     function loadStats(period) {
       var qs = period === '24h' ? '?period=24h' : '';
       fetch('/stats' + qs).then(function(r) { return r.json(); }).then(function(d) {
         document.getElementById('stat-tokens').textContent = d.totalTokensDeployed || '0';
         document.getElementById('stat-agents').textContent = d.uniqueClients || '0';
-        document.getElementById('stat-fees').textContent = (parseFloat(d.totalFeesClaimedWeth) || 0).toFixed(4) + ' ETH';
+        var weth = parseFloat(d.totalFeesClaimedWeth) || 0;
+        document.getElementById('stat-fees').textContent = formatFees(weth);
       }).catch(function() {
         document.getElementById('stat-tokens').textContent = '—';
         document.getElementById('stat-agents').textContent = '—';
