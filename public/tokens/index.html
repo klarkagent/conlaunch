@@ -171,7 +171,7 @@
     <div class="stats-row fade-in">
       <div class="stat-card"><div class="value" id="stat-total">—</div><div class="label">tokens</div></div>
       <div class="stat-card"><div class="value" id="stat-agents">—</div><div class="label">agents</div></div>
-      <div class="stat-card"><div class="value" id="stat-fees">—</div><div class="label">fees earned</div></div>
+      <div class="stat-card"><div class="value" id="stat-fees">—</div><div class="label">fees (24h)</div></div>
     </div>
 
     <div class="filter-bar fade-in">
@@ -255,15 +255,9 @@
             onChainFees[t.address.toLowerCase()] = t;
           });
         }
-        // Total fees display
-        var weth = parseFloat(d.totalWeth) || 0;
-        if (weth > 0 && ethPrice > 0) {
-          document.getElementById('stat-fees').textContent = formatUsd(weth * ethPrice);
-        } else if (weth > 0) {
-          document.getElementById('stat-fees').textContent = weth.toFixed(4) + ' ETH';
-        } else {
-          document.getElementById('stat-fees').textContent = '$0';
-        }
+        // Total fees display (already in USD from DexScreener volume × fee rate)
+        var fees = parseFloat(d.totalFeesUsd) || 0;
+        document.getElementById('stat-fees').textContent = fees > 0 ? formatUsd(fees) : '$0';
         // Re-render tokens if already loaded (to show per-token fees)
         if (currentPage >= 1) loadTokens(currentPage);
       }).catch(function() {
@@ -282,9 +276,9 @@
       var image = t.image || '';
       var website = t.website || '';
       var twitter = t.twitter || '';
-      // Use on-chain fees if available, fallback to DB
+      // Use DexScreener fees (volume × 1% Clanker fee rate) in USD
       var onChain = onChainFees[addr.toLowerCase()];
-      var feesWeth = onChain ? parseFloat(onChain.totalWeth) || 0 : parseFloat(t.total_fees_claimed_weth || t.totalFeesClaimedWeth || '0');
+      var feesUsd = onChain ? parseFloat(onChain.fees24hUsd) || 0 : 0;
       var shareText = encodeURIComponent(name + ' ($' + symbol.toUpperCase() + ') on Base\n\nDeployed via @Conlaunch_Bot\n\nhttps://dexscreener.com/base/' + addr);
 
       // Image or letter avatar
@@ -307,13 +301,11 @@
         linksHtml += '</div>';
       }
 
-      // Fees display
+      // Fees display (24h fees in USD from trading volume)
       var feesHtml = '';
-      if (feesWeth > 0) {
-        feesHtml = '<div class="token-fees">' + formatEth(feesWeth.toString()) + '</div>';
-        if (ethPrice > 0) {
-          feesHtml += '<div class="token-fees-usd">' + formatUsd(feesWeth * ethPrice) + '</div>';
-        }
+      if (feesUsd > 0) {
+        feesHtml = '<div class="token-fees">' + formatUsd(feesUsd) + '</div>';
+        feesHtml += '<div class="token-fees-usd">24h fees</div>';
       }
 
       return '<div class="token-card">' +

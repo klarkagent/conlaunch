@@ -13,14 +13,18 @@ import { validateLaunch } from "./validation.js";
 import { getTokenAnalytics, getAgentAnalytics, getLeaderboard } from "./analytics.js";
 import { checkRateLimit, formatCooldown } from "./ratelimit.js";
 import { uploadImage } from "./image.js";
-import { formatEther } from "viem";
 import type { Address } from "viem";
 
-// ── On-chain fee aggregation cache ──
+// ── Fee aggregation via DexScreener volume × Clanker fee rate ──
 
+const CLANKER_FEE_RATE = 0.01; // 1% LP fee on Clanker v4
+
+interface FeeCacheToken { address: string; volume24hUsd: number; fees24hUsd: number }
 interface FeeCache {
-  totalWeth: string;
-  tokens: Array<{ address: string; platformWeth: string; clientWeth: string; totalWeth: string }>;
+  totalFeesUsd: number;
+  totalVolume24hUsd: number;
+  feeRate: number;
+  tokens: FeeCacheToken[];
   cachedAt: string;
 }
 
@@ -28,90 +32,62 @@ let feeCache: FeeCache | null = null;
 let feeCacheTime = 0;
 const FEE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// Max sane reward per token: 10 ETH in wei (anything above is likely bad data)
-const MAX_SANE_REWARD = 10n * 10n ** 18n;
-
-async function aggregateOnChainFees(
-  platformWallet: `0x${string}`,
-  clankerInstance: any
-): Promise<FeeCache> {
+async function aggregateFees(): Promise<FeeCache> {
   // Return cache if fresh
   if (feeCache && Date.now() - feeCacheTime < FEE_CACHE_TTL) {
     return feeCache;
   }
 
   const tokens = getAllTokens("active");
-  const perToken: FeeCache["tokens"] = [];
+  const addresses = tokens.map((t) =>
+    ((t as any).token_address || (t as any).tokenAddress) as string
+  );
 
-  // Process all tokens in parallel (batched to avoid RPC overload)
-  const BATCH_SIZE = 5;
-  for (let i = 0; i < tokens.length; i += BATCH_SIZE) {
-    const batch = tokens.slice(i, i + BATCH_SIZE);
-    const results = await Promise.allSettled(
-      batch.map(async (token) => {
-        const addr = ((token as any).token_address || (token as any).tokenAddress) as `0x${string}`;
-        const clientWallet = ((token as any).client_wallet || (token as any).clientWallet) as `0x${string}` | undefined;
+  // Batch fetch from DexScreener (supports comma-separated addresses)
+  const perToken: FeeCacheToken[] = [];
+  let totalVol = 0;
+  let totalFees = 0;
 
-        let platformAmount = 0n;
-        let clientAmount = 0n;
+  try {
+    const url = `https://api.dexscreener.com/latest/dex/tokens/${addresses.join(",")}`;
+    const res = await fetch(url);
+    const data = (await res.json()) as { pairs?: Array<any> };
 
-        try {
-          const raw = await clankerInstance.availableRewards({
-            token: addr,
-            rewardRecipient: platformWallet,
-          });
-          platformAmount = typeof raw === "bigint" ? raw : 0n;
-        } catch {}
+    // Group volume by token address (a token may have multiple pairs)
+    const volumeMap = new Map<string, number>();
+    if (data.pairs) {
+      for (const pair of data.pairs) {
+        const base = pair.baseToken?.address?.toLowerCase();
+        if (!base) continue;
+        const vol = parseFloat(pair.volume?.h24) || 0;
+        volumeMap.set(base, (volumeMap.get(base) || 0) + vol);
+      }
+    }
 
-        if (clientWallet && clientWallet.toLowerCase() !== platformWallet.toLowerCase()) {
-          try {
-            const raw = await clankerInstance.availableRewards({
-              token: addr,
-              rewardRecipient: clientWallet,
-            });
-            clientAmount = typeof raw === "bigint" ? raw : 0n;
-          } catch {}
-        }
-
-        // Sanity check: skip absurd values (bad data from non-Clanker contracts etc)
-        if (platformAmount > MAX_SANE_REWARD) {
-          console.warn(`[fees] Skipping absurd platform reward for ${addr}: ${formatEther(platformAmount)} ETH`);
-          platformAmount = 0n;
-        }
-        if (clientAmount > MAX_SANE_REWARD) {
-          console.warn(`[fees] Skipping absurd client reward for ${addr}: ${formatEther(clientAmount)} ETH`);
-          clientAmount = 0n;
-        }
-
-        const tokenTotal = platformAmount + clientAmount;
-        return {
-          address: addr,
-          platformWeth: formatEther(platformAmount),
-          clientWeth: formatEther(clientAmount),
-          totalWeth: formatEther(tokenTotal),
-        };
-      })
-    );
-
-    for (const r of results) {
-      if (r.status === "fulfilled") perToken.push(r.value);
+    for (const addr of addresses) {
+      const vol = volumeMap.get(addr.toLowerCase()) || 0;
+      const fees = vol * CLANKER_FEE_RATE;
+      totalVol += vol;
+      totalFees += fees;
+      perToken.push({ address: addr, volume24hUsd: vol, fees24hUsd: fees });
+    }
+  } catch (err: any) {
+    console.error(`[fees] DexScreener fetch failed: ${err.message}`);
+    // Return zeros for all tokens
+    for (const addr of addresses) {
+      perToken.push({ address: addr, volume24hUsd: 0, fees24hUsd: 0 });
     }
   }
 
-  // Compute total from individual results (safe — no parallel mutation)
-  let totalWei = 0n;
-  for (const t of perToken) {
-    const wei = BigInt(Math.round(parseFloat(t.totalWeth) * 1e18));
-    totalWei += wei;
-  }
-
   feeCache = {
-    totalWeth: formatEther(totalWei),
+    totalFeesUsd: totalFees,
+    totalVolume24hUsd: totalVol,
+    feeRate: CLANKER_FEE_RATE,
     tokens: perToken,
     cachedAt: new Date().toISOString(),
   };
   feeCacheTime = Date.now();
-  console.log(`[fees] Aggregated ${perToken.length} tokens, total: ${feeCache.totalWeth} ETH`);
+  console.log(`[fees] Volume: $${totalVol.toFixed(2)}, Fees: $${totalFees.toFixed(2)} (${perToken.length} tokens)`);
   return feeCache;
 }
 
@@ -274,7 +250,7 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
   // Aggregated on-chain fees (cached 5min)
   app.get("/fees/aggregate", async (c) => {
     try {
-      const result = await aggregateOnChainFees(platformWallet, clankerInstance);
+      const result = await aggregateFees();
       return c.json(result);
     } catch (err: any) {
       return c.json({ totalWeth: "0", tokens: [], cachedAt: null, error: sanitizeError(err) });

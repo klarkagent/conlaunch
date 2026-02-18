@@ -350,7 +350,7 @@
       </div>
       <div class="stat-item">
         <div class="value" id="stat-fees">—</div>
-        <div class="label">fees earned</div>
+        <div class="label">fees (24h)</div>
       </div>
       <div class="stat-item">
         <div class="value">Base</div>
@@ -480,8 +480,8 @@
     function loadOnChainFees() {
       document.getElementById('stat-fees').textContent = '...';
       fetch('/fees/aggregate').then(function(r) { return r.json(); }).then(function(d) {
-        var weth = parseFloat(d.totalWeth) || 0;
-        document.getElementById('stat-fees').textContent = formatFees(weth);
+        var fees = parseFloat(d.totalFeesUsd) || 0;
+        document.getElementById('stat-fees').textContent = fees > 0 ? formatUsd(fees) : '$0';
       }).catch(function() {
         document.getElementById('stat-fees').textContent = '—';
       });
