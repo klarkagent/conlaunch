@@ -96,6 +96,9 @@ function seedKnownTokens(d: Database.Database) {
     { name: "Octane AI", symbol: "OCTANE", token_address: "0x8E050b7d0A7ca54e201c9180ef54cd06c9304B07", tx_hash: "0x8b77d5e9355cda0e30725e6c2ec2951042e20a97b75d8ec1c89159d569b81c20", client_wallet: "0x8962E8C0cA02466cA439BC8B75c92053F5893790", client_bps: 8000, platform_bps: 2000 },
     { name: "Conlaunch", symbol: "Conlaunch", token_address: "0x6dDD614c95A65545E96f37B79D1a3485228dcB07", tx_hash: "0x06a2f1707024364ff15fe2eb0a6186da2335a25e67e6bf85c4b5b58c1cc9cb27", client_wallet: "0x3f80284F5F3b6C6bFaDEaE40C229bafc931905AC", client_bps: 8000, platform_bps: 2000 },
     { name: "CoinlClaw", symbol: "CoinlClaw", token_address: "0xB3ead7659b354fc24b91d2538f4eD107a0429B07", tx_hash: "0xa204cfafa3d9fda8fd2bdc06056289e4485a2d5534ffc3ca7db9b83c89093065", client_wallet: "0x0cCe1bf28B673626F140b926d55d7F3A88AA0615", client_bps: 8000, platform_bps: 2000 },
+    { name: "BIGMO", symbol: "BIGMO", token_address: "0xfCF60bE60c2C43e8A0473aEF86262bfc60f9AB07", tx_hash: "0x990bdfa613d7342906720013b5fb227b7f57159c019589e324403ed149d151d8", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
+    { name: "conlaunchbot", symbol: "CNLAUNCH", token_address: "0xB652aCe48729F808959763cFC332133ECE8E9b07", tx_hash: "0x5e5af27313ee7f295e2619a0fcc33bb20f326b94e4134ee2ba87d63b177d8427", client_wallet: "0x82a096b07033f033b2426c9938640844582a20f3", client_bps: 8000, platform_bps: 2000 },
+    { name: "CLAWN", symbol: "CLAWN", token_address: "0xC4415E78C2784d2c757Ca9992D706D5e4891DB07", tx_hash: "0xcd221c693af3fbade8e2b912aaf8a28d6921bd75607dfdee123256f219d87642", client_wallet: "0xc7d67ba700044d9562d124de7bef0f10493f97e5", client_bps: 8000, platform_bps: 2000 },
   ];
 
   const insert = d.prepare(`
