@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { serve } from "@hono/node-server";
 import { privateKeyToAccount } from "viem/accounts";
+import { existsSync, writeFileSync } from "fs";
 import { createClients } from "./deployer.js";
 import { createServer } from "./server.js";
 import { getDb, getStats } from "./db.js";
@@ -45,6 +46,30 @@ async function main() {
     process.exit(1);
   }
 
+  // Verify persistent storage
+  const dbPath = process.env.DB_PATH || "";
+  const isOnPersistentDisk = dbPath.startsWith("/data/");
+  if (isOnPersistentDisk) {
+    const diskExists = existsSync("/data");
+    if (!diskExists) {
+      console.error("  FATAL: DB_PATH points to /data/ but /data/ does not exist!");
+      console.error("  Persistent disk is NOT mounted. All data WILL be lost on redeploy.");
+      console.error("  Go to Render dashboard → Disks → Add Disk (mount: /data, size: 1GB)");
+      process.exit(1);
+    }
+    // Verify writable
+    try {
+      writeFileSync("/data/.disk-check", "ok");
+      console.log("  Storage: /data/ persistent disk ✓");
+    } catch {
+      console.error("  FATAL: /data/ exists but is not writable!");
+      process.exit(1);
+    }
+  } else {
+    console.warn("  WARNING: DB not on persistent disk — data will be lost on redeploy!");
+    console.warn(`  DB_PATH: ${dbPath || "(default: ./conlaunch.db)"}`);
+  }
+
   // Init database
   getDb();
   const stats = getStats();
@@ -52,6 +77,7 @@ async function main() {
   const feeBps = process.env.PLATFORM_FEE_BPS || "2000";
   console.log(`  Wallet:    ${account.address}`);
   console.log(`  Chain:     Base (8453)`);
+  console.log(`  DB:        ${dbPath || "./conlaunch.db"}`);
   console.log(`  Fee:       ${feeBps} bps (${parseInt(feeBps) / 100}%)`);
   console.log(`  Auth:      ${process.env.API_KEY ? "API key required" : "OPEN (dev mode)"}`);
   console.log(`  CORS:      ${process.env.CORS_ORIGINS || "* (all origins)"}`);
