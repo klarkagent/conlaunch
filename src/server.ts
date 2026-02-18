@@ -43,40 +43,39 @@ async function aggregateFees(): Promise<FeeCache> {
     ((t as any).token_address || (t as any).tokenAddress) as string
   );
 
-  // Batch fetch from DexScreener (supports comma-separated addresses)
+  // Batch fetch from DexScreener (max 10 per request to avoid URL length limits)
+  const volumeMap = new Map<string, number>();
+  const DEXSCREENER_BATCH = 10;
+
+  for (let i = 0; i < addresses.length; i += DEXSCREENER_BATCH) {
+    const batch = addresses.slice(i, i + DEXSCREENER_BATCH);
+    try {
+      const url = `https://api.dexscreener.com/latest/dex/tokens/${batch.join(",")}`;
+      const res = await fetch(url);
+      const data = (await res.json()) as { pairs?: Array<any> };
+      if (data.pairs) {
+        for (const pair of data.pairs) {
+          const base = pair.baseToken?.address?.toLowerCase();
+          if (!base) continue;
+          const vol = parseFloat(pair.volume?.h24) || 0;
+          volumeMap.set(base, (volumeMap.get(base) || 0) + vol);
+        }
+      }
+    } catch (err: any) {
+      console.error(`[fees] DexScreener batch ${i / DEXSCREENER_BATCH + 1} failed: ${err.message}`);
+    }
+  }
+
   const perToken: FeeCacheToken[] = [];
   let totalVol = 0;
   let totalFees = 0;
 
-  try {
-    const url = `https://api.dexscreener.com/latest/dex/tokens/${addresses.join(",")}`;
-    const res = await fetch(url);
-    const data = (await res.json()) as { pairs?: Array<any> };
-
-    // Group volume by token address (a token may have multiple pairs)
-    const volumeMap = new Map<string, number>();
-    if (data.pairs) {
-      for (const pair of data.pairs) {
-        const base = pair.baseToken?.address?.toLowerCase();
-        if (!base) continue;
-        const vol = parseFloat(pair.volume?.h24) || 0;
-        volumeMap.set(base, (volumeMap.get(base) || 0) + vol);
-      }
-    }
-
-    for (const addr of addresses) {
-      const vol = volumeMap.get(addr.toLowerCase()) || 0;
-      const fees = vol * CLANKER_FEE_RATE;
-      totalVol += vol;
-      totalFees += fees;
-      perToken.push({ address: addr, volume24hUsd: vol, fees24hUsd: fees });
-    }
-  } catch (err: any) {
-    console.error(`[fees] DexScreener fetch failed: ${err.message}`);
-    // Return zeros for all tokens
-    for (const addr of addresses) {
-      perToken.push({ address: addr, volume24hUsd: 0, fees24hUsd: 0 });
-    }
+  for (const addr of addresses) {
+    const vol = volumeMap.get(addr.toLowerCase()) || 0;
+    const fees = vol * CLANKER_FEE_RATE;
+    totalVol += vol;
+    totalFees += fees;
+    perToken.push({ address: addr, volume24hUsd: vol, fees24hUsd: fees });
   }
 
   feeCache = {
@@ -253,7 +252,7 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
       const result = await aggregateFees();
       return c.json(result);
     } catch (err: any) {
-      return c.json({ totalWeth: "0", tokens: [], cachedAt: null, error: sanitizeError(err) });
+      return c.json({ totalFeesUsd: 0, totalVolume24hUsd: 0, feeRate: CLANKER_FEE_RATE, tokens: [], cachedAt: null, error: sanitizeError(err) });
     }
   });
 
