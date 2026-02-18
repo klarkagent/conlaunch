@@ -148,8 +148,8 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
         chain: "base",
         chainId: 8453,
         endpoints: {
-          public: ["GET /", "GET /health", "GET /stats", "GET /tokens", "GET /tokens/:address", "GET /tokens/:address/share", "GET /clients/:wallet/tokens", "GET /rate-limit/:wallet", "GET /fees/:tokenAddress", "POST /preview", "GET /analytics/token/:address", "GET /analytics/agent/:wallet", "GET /analytics/leaderboard"],
-          authenticated: ["POST /deploy", "POST /upload", "POST /fees/:tokenAddress/claim", "POST /fees/claim-all"],
+          public: ["GET /", "GET /health", "GET /stats", "GET /tokens", "GET /tokens/:address", "GET /tokens/:address/share", "GET /clients/:wallet/tokens", "GET /rate-limit/:wallet", "GET /fees/:tokenAddress", "POST /preview", "POST /deploy", "GET /analytics/token/:address", "GET /analytics/agent/:wallet", "GET /analytics/leaderboard"],
+          authenticated: ["POST /upload", "POST /fees/:tokenAddress/claim", "POST /fees/claim-all"],
         },
       });
     }
@@ -260,11 +260,9 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
     });
   });
 
-  // ── Deploy (authenticated) ──
+  // ── Deploy (public — rate limited by wallet) ──
 
   app.post("/deploy", async (c) => {
-    const authErr = requireAuth(c);
-    if (authErr) return authErr;
 
     const body = await parseBody(c);
     if (body instanceof Response) return body;
