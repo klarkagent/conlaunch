@@ -408,6 +408,30 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
     return c.json(getLeaderboard(sort, limit));
   });
 
+  // ── Admin: manual token insert (authenticated) ──
+
+  app.post("/admin/insert-token", async (c) => {
+    const authErr = requireAuth(c);
+    if (authErr) return authErr;
+
+    const body = await parseBody(c);
+    if (body instanceof Response) return body;
+    const requestId = (c.get as any)("requestId") || "unknown";
+
+    const { name, symbol, tokenAddress, txHash, clientWallet, clientBps, platformBps, vaultPercentage } = body;
+    if (!name || !symbol || !tokenAddress || !txHash || !clientWallet) {
+      return c.json(errorResponse("Missing required fields", 400, requestId), 400);
+    }
+
+    try {
+      const { recordDeployment } = await import("./db.js");
+      const token = recordDeployment(name, symbol, tokenAddress, txHash, clientWallet, clientBps || 8000, platformBps || 2000, vaultPercentage || 0);
+      return c.json({ success: true, token });
+    } catch (err: any) {
+      return c.json(errorResponse(err.message, 400, requestId), 400);
+    }
+  });
+
   // ── 404 ──
 
   app.notFound((c) => {
