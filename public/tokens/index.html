@@ -168,9 +168,8 @@
       </div>
     </div>
 
-    <div class="stats-row fade-in">
+    <div class="stats-row fade-in" style="grid-template-columns: repeat(2, 1fr);">
       <div class="stat-card"><div class="value" id="stat-total">—</div><div class="label">tokens</div></div>
-      <div class="stat-card"><div class="value" id="stat-agents">—</div><div class="label">agents</div></div>
       <div class="stat-card"><div class="value" id="stat-fees">—</div><div class="label">fees (24h)</div></div>
     </div>
 
@@ -239,10 +238,8 @@
       var qs = currentPeriod === '24h' ? '?period=24h' : '';
       fetch(API + '/stats' + qs).then(function(r) { return r.json(); }).then(function(d) {
         document.getElementById('stat-total').textContent = d.totalTokensDeployed || '0';
-        document.getElementById('stat-agents').textContent = d.uniqueClients || '0';
       }).catch(function() {
         document.getElementById('stat-total').textContent = '—';
-        document.getElementById('stat-agents').textContent = '—';
       });
     }
 

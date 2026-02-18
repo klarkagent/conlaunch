@@ -4,7 +4,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { existsSync, writeFileSync } from "fs";
 import { createClients } from "./deployer.js";
 import { createServer } from "./server.js";
-import { getDb, getStats } from "./db.js";
+import { getDb, getStats, recoverTokensFromChain } from "./db.js";
 import { startAutoClaim, stopAutoClaim } from "./autoclaim.js";
 
 async function main() {
@@ -110,6 +110,11 @@ async function main() {
     console.log("    POST /fees/:addr/claim     Claim fees");
     console.log("    POST /fees/claim-all       Batch claim all");
     console.log("");
+
+    // Auto-recover tokens from on-chain (non-blocking)
+    recoverTokensFromChain(account.address).catch((err) =>
+      console.error("  [recovery] Failed:", err.message)
+    );
   });
 
   // Graceful shutdown

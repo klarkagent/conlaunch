@@ -99,6 +99,15 @@ function seedKnownTokens(d: Database.Database) {
     { name: "BIGMO", symbol: "BIGMO", token_address: "0xfCF60bE60c2C43e8A0473aEF86262bfc60f9AB07", tx_hash: "0x990bdfa613d7342906720013b5fb227b7f57159c019589e324403ed149d151d8", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
     { name: "conlaunchbot", symbol: "CNLAUNCH", token_address: "0xB652aCe48729F808959763cFC332133ECE8E9b07", tx_hash: "0x5e5af27313ee7f295e2619a0fcc33bb20f326b94e4134ee2ba87d63b177d8427", client_wallet: "0x82a096b07033f033b2426c9938640844582a20f3", client_bps: 8000, platform_bps: 2000 },
     { name: "CLAWN", symbol: "CLAWN", token_address: "0xC4415E78C2784d2c757Ca9992D706D5e4891DB07", tx_hash: "0xcd221c693af3fbade8e2b912aaf8a28d6921bd75607dfdee123256f219d87642", client_wallet: "0xc7d67ba700044d9562d124de7bef0f10493f97e5", client_bps: 8000, platform_bps: 2000 },
+    // Wave 3 recovery (2026-02-18)
+    { name: "X Agent", symbol: "XAGENT", token_address: "0x43617961eBE93368789B4555102A9086445bBB07", tx_hash: "0x10c22e69f008a8c0d1409d4504a3645fca529775864c40b6f247349bed35c61b", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
+    { name: "MOLTBOOK", symbol: "MOLTBOOK", token_address: "0x9c45483Beb5346C404D27197E1B15Baeb3d09B07", tx_hash: "0x1b21a5ef36ee44411610f8a95487ab10f39349c9e6e86456767620a733eb5fca", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
+    { name: "MOLTX", symbol: "MOLTX", token_address: "0xbde56Bb90841e49478eAACFebf0317815556fb07", tx_hash: "0xac40441b62582a6061f09897ab5350ca9969e666707dab271f7711ff3edb8804", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
+    { name: "ConLaunch", symbol: "CLAUNCH", token_address: "0x2c3C731B1448CE1665C62EDA4fFC1D1b54936b07", tx_hash: "0xb6a6348b5f94601906d6bb5b3514297b848ab7443f1e02c6402f5a870d990469", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
+    { name: "None", symbol: "None", token_address: "0x1A70ff30cD85f9eEFbB8BaD795442b14ebF33b07", tx_hash: "0xee695e7129e9775c0588273e76feae0abd69964562bb892ec6608571d370a687", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
+    { name: "CLAUNCH AI BANK", symbol: "CAB", token_address: "0x9F7980fFd1776f2C78e89EE54219e576EF234b07", tx_hash: "0x47bceb31eaa7524b4aeec5d881e26ce6cb9d8b19d7b5ba0c22d1907c86de653f", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
+    { name: "Agent On Claunch", symbol: "AOC", token_address: "0x1c27b760d6055dA5D2eA5D30c72Ad1839794eB07", tx_hash: "0xf8598971ecc5dab2c1d6a0de0ec18ce58dd0c9f5346759ccf05d954e607cc4f5", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
+    { name: "fomoltbook", symbol: "FOMOLTBOOK", token_address: "0x3A910d89CBE63C51361273cDbd1dd4Abc7E53b07", tx_hash: "0xef4b126a7e34a7c48afdec654fd25040d704d62b28767ba60f861eac6f6fe170", client_wallet: "0x2892C415e9A43529437301f389a6b050970c54Ec", client_bps: 8000, platform_bps: 2000 },
   ];
 
   const insert = d.prepare(`
@@ -179,6 +188,92 @@ export function recordFeeClaim(
   `).run(wethClaimed, tokenClaimed, tokenAddress);
 
   return { tokenAddress, txHash, wethClaimed, tokenClaimed, claimedAt: new Date().toISOString() };
+}
+
+/**
+ * Auto-recover all deployed tokens from Blockscout.
+ * Scans platform wallet's deployToken transactions and inserts any missing tokens.
+ * Runs async after server startup — never blocks boot.
+ */
+export async function recoverTokensFromChain(platformWallet: string): Promise<number> {
+  const d = getDb();
+  const insert = d.prepare(`
+    INSERT OR IGNORE INTO tokens (name, symbol, token_address, tx_hash, client_wallet, client_bps, platform_bps, vault_percentage)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+  `);
+
+  let recovered = 0;
+  let url: string | null = `https://base.blockscout.com/api/v2/addresses/${platformWallet}/transactions`;
+
+  try {
+    // Paginate through all transactions
+    for (let page = 0; page < 10 && url; page++) {
+      const res = await fetch(url, { headers: { "User-Agent": "ConLaunch/1.0" } });
+      const data = (await res.json()) as any;
+      const items: any[] = data.items || [];
+
+      for (const tx of items) {
+        if (tx.method !== "deployToken" || tx.result !== "success") continue;
+        const txHash = tx.hash;
+
+        // Get token address from Transfer(from=0x0) mint event
+        try {
+          const logsRes = await fetch(
+            `https://base.blockscout.com/api/v2/transactions/${txHash}/logs`,
+            { headers: { "User-Agent": "ConLaunch/1.0" } }
+          );
+          const logsData = (await logsRes.json()) as any;
+          for (const log of logsData.items || []) {
+            const decoded = log.decoded || {};
+            if (!decoded.method_call?.startsWith("Transfer")) continue;
+            const params = decoded.parameters || [];
+            const fromParam = params.find((p: any) => p.name === "from");
+            if (fromParam?.value !== "0x0000000000000000000000000000000000000000") continue;
+
+            const tokenAddr = log.address?.hash;
+            if (!tokenAddr || !tokenAddr.toLowerCase().endsWith("b07")) continue;
+
+            // Fetch token metadata
+            let name = "Unknown", symbol = "UNKNOWN";
+            try {
+              const tokenRes = await fetch(
+                `https://base.blockscout.com/api/v2/tokens/${tokenAddr}`,
+                { headers: { "User-Agent": "ConLaunch/1.0" } }
+              );
+              const tokenData = (await tokenRes.json()) as any;
+              name = tokenData.name || name;
+              symbol = tokenData.symbol || symbol;
+            } catch {}
+
+            const result = insert.run(name, symbol, tokenAddr, txHash, platformWallet, 8000, 2000);
+            if (result.changes > 0) {
+              recovered++;
+              console.log(`  [recovery] Found new token: ${name} ($${symbol}) ${tokenAddr.slice(0, 10)}...`);
+            }
+            break; // Only need first mint Transfer per tx
+          }
+        } catch {}
+      }
+
+      // Next page
+      const npp = data.next_page_params;
+      if (npp) {
+        const params = Object.entries(npp).map(([k, v]) => `${k}=${v}`).join("&");
+        url = `https://base.blockscout.com/api/v2/addresses/${platformWallet}/transactions?${params}`;
+      } else {
+        url = null;
+      }
+    }
+  } catch (err: any) {
+    console.error(`  [recovery] Blockscout scan failed: ${err.message}`);
+  }
+
+  if (recovered > 0) {
+    console.log(`  [recovery] Recovered ${recovered} new tokens from on-chain`);
+  } else {
+    console.log(`  [recovery] All tokens accounted for`);
+  }
+  return recovered;
 }
 
 export function getStats(period?: string): LaunchpadStats {
