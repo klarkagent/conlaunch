@@ -2,7 +2,7 @@ services:
   - type: web
     name: conlaunch
     runtime: node
-    plan: free
+    plan: starter
     buildCommand: npm install && npm run build
     startCommand: node dist/index.js
     envVars:
@@ -21,4 +21,8 @@ services:
       - key: CORS_ORIGINS
         value: https://conlaunch.com
       - key: DB_PATH
-        value: ./conlaunch.db
+        value: /data/conlaunch.db
+    disk:
+      name: conlaunch-data
+      mountPath: /data
+      sizeGB: 1
