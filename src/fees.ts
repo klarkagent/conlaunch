@@ -1,33 +1,63 @@
 import { formatEther } from "viem";
-import { getAllTokens, recordFeeClaim } from "./db.js";
+import { getAllTokens, getTokenByAddress, recordFeeClaim } from "./db.js";
 import type { FeeClaimResult } from "./types.js";
 
 /**
  * Check available rewards for a specific token.
+ * Checks both platform (20%) and client (80%) shares.
  * Uses Clanker SDK v4: availableRewards({ token, rewardRecipient }) → bigint
  */
 export async function checkFees(
   tokenAddress: string,
   platformWallet: `0x${string}`,
   clankerInstance: any
-): Promise<{ available: boolean; amount: string; raw: string }> {
+): Promise<{
+  available: boolean;
+  platform: { amount: string; raw: string };
+  client: { wallet: string; amount: string; raw: string } | null;
+}> {
+  const token = getTokenByAddress(tokenAddress);
+  // DB returns snake_case columns
+  const clientWallet = (token as any)?.client_wallet as `0x${string}` | undefined;
+
+  // Check platform fees
+  let platformAmount = 0n;
   try {
-    const amount: bigint = await clankerInstance.availableRewards({
+    platformAmount = await clankerInstance.availableRewards({
       token: tokenAddress as `0x${string}`,
       rewardRecipient: platformWallet,
     });
-    return {
-      available: amount > 0n,
-      amount: formatEther(amount),
-      raw: amount.toString(),
-    };
-  } catch {
-    return { available: false, amount: "0", raw: "0" };
+  } catch {}
+
+  // Check client fees
+  let clientAmount = 0n;
+  if (clientWallet && clientWallet !== platformWallet) {
+    try {
+      clientAmount = await clankerInstance.availableRewards({
+        token: tokenAddress as `0x${string}`,
+        rewardRecipient: clientWallet,
+      });
+    } catch {}
   }
+
+  return {
+    available: platformAmount > 0n || clientAmount > 0n,
+    platform: {
+      amount: formatEther(platformAmount),
+      raw: platformAmount.toString(),
+    },
+    client: clientWallet
+      ? {
+          wallet: clientWallet,
+          amount: formatEther(clientAmount),
+          raw: clientAmount.toString(),
+        }
+      : null,
+  };
 }
 
 /**
- * Claim rewards for a specific token.
+ * Claim rewards for a specific token — claims for BOTH platform and client.
  * Uses Clanker SDK v4: claimRewards({ token, rewardRecipient }) → { txHash } | { error }
  */
 export async function claimFees(
@@ -35,37 +65,69 @@ export async function claimFees(
   platformWallet: `0x${string}`,
   clankerInstance: any
 ): Promise<FeeClaimResult | null> {
+  const token = getTokenByAddress(tokenAddress);
+  // DB returns snake_case columns
+  const clientWallet = (token as any)?.client_wallet as `0x${string}` | undefined;
+  const txHashes: string[] = [];
+  let totalClaimed = 0n;
+
+  // Claim platform fees (20%)
   try {
-    // Check available first
-    const available: bigint = await clankerInstance.availableRewards({
+    const platformAvailable: bigint = await clankerInstance.availableRewards({
       token: tokenAddress as `0x${string}`,
       rewardRecipient: platformWallet,
     });
 
-    if (available === 0n) return null;
-
-    // Claim
-    const result = await clankerInstance.claimRewards({
-      token: tokenAddress as `0x${string}`,
-      rewardRecipient: platformWallet,
-    });
-
-    if (result.error) {
-      console.error(`Claim error for ${tokenAddress}:`, result.error.data?.label || result.error.message);
-      return null;
+    if (platformAvailable > 0n) {
+      const result = await clankerInstance.claimRewards({
+        token: tokenAddress as `0x${string}`,
+        rewardRecipient: platformWallet,
+      });
+      if (!result.error) {
+        txHashes.push(result.txHash);
+        totalClaimed += platformAvailable;
+      } else {
+        console.error(`Platform claim error for ${tokenAddress}:`, result.error.data?.label || result.error.message);
+      }
     }
-
-    const wethClaimed = formatEther(available);
-
-    return recordFeeClaim(tokenAddress, result.txHash, wethClaimed, "0");
   } catch (err: any) {
-    console.error(`Failed to claim fees for ${tokenAddress}:`, err.message);
-    return null;
+    console.error(`Platform claim failed for ${tokenAddress}:`, err.message);
   }
+
+  // Claim client fees (80%)
+  if (clientWallet && clientWallet !== platformWallet) {
+    try {
+      const clientAvailable: bigint = await clankerInstance.availableRewards({
+        token: tokenAddress as `0x${string}`,
+        rewardRecipient: clientWallet,
+      });
+
+      if (clientAvailable > 0n) {
+        const result = await clankerInstance.claimRewards({
+          token: tokenAddress as `0x${string}`,
+          rewardRecipient: clientWallet,
+        });
+        if (!result.error) {
+          txHashes.push(result.txHash);
+          totalClaimed += clientAvailable;
+        } else {
+          console.error(`Client claim error for ${tokenAddress}:`, result.error.data?.label || result.error.message);
+        }
+      }
+    } catch (err: any) {
+      console.error(`Client claim failed for ${tokenAddress}:`, err.message);
+    }
+  }
+
+  if (txHashes.length === 0) return null;
+
+  const wethClaimed = formatEther(totalClaimed);
+  return recordFeeClaim(tokenAddress, txHashes[0], wethClaimed, "0");
 }
 
 /**
  * Batch claim fees across all active deployed tokens.
+ * Claims for both platform and client wallets.
  */
 export async function claimAllFees(
   platformWallet: `0x${string}`,
@@ -81,15 +143,17 @@ export async function claimAllFees(
   const errors: Array<{ address: string; error: string }> = [];
 
   for (const token of tokens) {
+    // DB returns snake_case columns
+    const addr = (token as any).token_address as string;
     try {
-      const result = await claimFees(token.tokenAddress, platformWallet, clankerInstance);
+      const result = await claimFees(addr, platformWallet, clankerInstance);
       if (result) {
         claimed.push(result);
       } else {
-        skipped.push(token.tokenAddress);
+        skipped.push(addr);
       }
     } catch (err: any) {
-      errors.push({ address: token.tokenAddress, error: err.message });
+      errors.push({ address: addr, error: err.message });
     }
   }
 

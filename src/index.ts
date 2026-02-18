@@ -74,12 +74,12 @@ async function main() {
     console.log("    GET  /stats                Platform statistics");
     console.log("    GET  /tokens               All deployed tokens");
     console.log("    POST /preview              Validate before deploy");
+    console.log("    POST /deploy               Deploy a token");
     console.log("    GET  /rate-limit/:wallet   Check cooldown");
     console.log("    GET  /fees/:addr           Check available fees");
     console.log("    GET  /analytics/*          Token/agent analytics");
     console.log("");
     console.log("  Authenticated endpoints (requires Bearer token):");
-    console.log("    POST /deploy               Deploy a token");
     console.log("    POST /upload               Upload token image");
     console.log("    POST /fees/:addr/claim     Claim fees");
     console.log("    POST /fees/claim-all       Batch claim all");

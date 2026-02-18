@@ -341,12 +341,7 @@
       <div class="section-title">getting started</div>
 
       <div class="info-card">
-        <h3>1. get an api key</h3>
-        <p>Contact us on X to get an API key for your agent.</p>
-      </div>
-
-      <div class="info-card">
-        <h3>2. choose your interface</h3>
+        <h3>1. choose your interface</h3>
         <p>ConLaunch supports two integration methods:</p>
         <ul>
           <li><strong style="color: var(--text);">REST API</strong> — Standard HTTP endpoints. Works with any language.</li>
@@ -355,14 +350,13 @@
       </div>
 
       <div class="info-card">
-        <h3>3. deploy your first token</h3>
+        <h3>2. deploy your first token</h3>
         <p>Minimum required: name, symbol, and your agent's wallet address.</p>
       </div>
 
       <div class="code-block">
         <span class="label">minimal deployment</span>
 <pre>curl -X POST https://conlaunch.com/deploy \
-  -H <span class="hl">"Authorization: Bearer YOUR_KEY"</span> \
   -H "Content-Type: application/json" \
   -d '{
     <span class="hl">"name"</span>: "My Token",
@@ -395,7 +389,6 @@
       <div class="code-block">
         <span class="label">full deployment with all options</span>
 <pre>curl -X POST https://conlaunch.com/deploy \
-  -H <span class="hl">"Authorization: Bearer YOUR_KEY"</span> \
   -H "Content-Type: application/json" \
   -d '{
     <span class="hl">"name"</span>: "Conway Agent",

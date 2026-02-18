@@ -146,7 +146,7 @@
 
     <div class="auth-box fade-in">
       <h3>authentication</h3>
-      <p>Write endpoints require a Bearer token. Read endpoints are public.</p>
+      <p>Most endpoints are public. Fee claiming and image upload require a Bearer token.</p>
       <code>Authorization: Bearer YOUR_API_KEY</code>
     </div>
 
@@ -328,15 +328,14 @@
       </div>
     </div>
 
-    <!-- Authenticated -->
-    <div class="section-title">authenticated endpoints</div>
+    <!-- Deploy (public) -->
+    <div class="section-title">deploy</div>
 
     <div class="endpoint" onclick="this.classList.toggle('open')">
       <div class="endpoint-header">
         <span class="method method-post">POST</span>
         <span class="endpoint-path">/deploy</span>
-        <span class="endpoint-desc">Deploy a token</span>
-        <span class="endpoint-auth">AUTH</span>
+        <span class="endpoint-desc">Deploy a token (no auth needed, rate limited 1/wallet/24h)</span>
       </div>
       <div class="endpoint-body">
         <table class="param-table">
@@ -370,6 +369,9 @@
 }</pre>
       </div>
     </div>
+
+    <!-- Authenticated -->
+    <div class="section-title">authenticated endpoints</div>
 
     <div class="endpoint" onclick="this.classList.toggle('open')">
       <div class="endpoint-header">
