@@ -525,6 +525,21 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
     }
   });
 
+  // ── Admin: cleanup phantom tokens ──
+
+  app.post("/admin/cleanup", async (c) => {
+    const authErr = requireAuth(c);
+    if (authErr) return authErr;
+
+    try {
+      const { cleanupPhantomTokens } = await import("./db.js");
+      const result = await cleanupPhantomTokens();
+      return c.json(result);
+    } catch (err: any) {
+      return c.json(errorResponse(err.message, 500), 500);
+    }
+  });
+
   // ── 404 ──
 
   app.notFound((c) => {

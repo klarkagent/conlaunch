@@ -276,6 +276,51 @@ export async function recoverTokensFromChain(platformWallet: string): Promise<nu
   return recovered;
 }
 
+/**
+ * Remove phantom tokens that don't exist on-chain.
+ * Checks each "Unknown" token against Blockscout — deletes if 404.
+ */
+export async function cleanupPhantomTokens(): Promise<{ removed: number; kept: number; checked: number }> {
+  const d = getDb();
+  const unknowns = d.prepare("SELECT id, token_address, name, symbol FROM tokens WHERE name = 'Unknown' OR symbol = 'UNKNOWN' OR name = 'None' OR symbol = 'None'").all() as any[];
+
+  let removed = 0;
+  let kept = 0;
+
+  for (const t of unknowns) {
+    try {
+      const res = await fetch(
+        `https://base.blockscout.com/api/v2/tokens/${t.token_address}`,
+        { headers: { "User-Agent": "ConLaunch/1.0" }, signal: AbortSignal.timeout(5000) }
+      );
+      if (res.ok) {
+        const data = await res.json() as any;
+        if (data.name && data.name !== "Unknown") {
+          // Token exists — update its name
+          d.prepare("UPDATE tokens SET name = ?, symbol = ? WHERE id = ?").run(data.name, data.symbol || data.name, t.id);
+          kept++;
+          console.log(`  [cleanup] Updated: ${data.name} (${data.symbol}) ${t.token_address.slice(0, 12)}...`);
+        } else {
+          kept++;
+        }
+      } else {
+        // 404 — token doesn't exist on-chain, remove it
+        d.prepare("DELETE FROM tokens WHERE id = ?").run(t.id);
+        removed++;
+        console.log(`  [cleanup] Removed phantom: ${t.token_address.slice(0, 12)}...`);
+      }
+    } catch {
+      // Network error — skip, don't delete
+      kept++;
+    }
+    // Rate limit
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  console.log(`  [cleanup] Done: removed ${removed}, kept ${kept}, checked ${unknowns.length}`);
+  return { removed, kept, checked: unknowns.length };
+}
+
 export function getStats(period?: string): LaunchpadStats {
   const d = getDb();
   const timeFilter = period === "24h" ? " WHERE deployed_at >= datetime('now', '-1 day')" : "";

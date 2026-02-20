@@ -124,23 +124,7 @@ Authorization: Bearer YOUR_API_KEY
 
 ## MCP Server
 
-For AI agents with MCP support:
-```json
-{
-  "mcpServers": {
-    "conlaunch": {
-      "command": "npx",
-      "args": ["conlaunch-mcp"],
-      "env": {
-        "CONLAUNCH_API_URL": "https://conlaunch.com",
-        "CONLAUNCH_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
-
-12 tools: deploy_token, validate_launch, check_rate_limit, upload_image, check_fees, claim_fees, claim_all_fees, list_tokens, launchpad_stats, token_analytics, agent_analytics, leaderboard
+Coming soon. MCP integration for native AI agent tool calls.
 
 ## Self-Funding Loop
 

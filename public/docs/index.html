@@ -193,32 +193,22 @@
 
     <!-- MCP Tab -->
     <div id="tab-mcp" class="tab-content active">
-      <div class="copy-box" onclick="copyText('npx conlaunch-mcp', this)">
-        <code>npx conlaunch-mcp</code>
-        <button class="copy-btn">copy</button>
-      </div>
-
-      <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 8px;">
-        Add to your MCP config to give your agent token deployment capabilities.
+      <p style="font-size: 14px; color: var(--text); margin-bottom: 16px;">
+        MCP server coming soon. For now, use the REST API directly — no auth needed for deployment.
       </p>
 
       <div class="code-block">
-        <span class="label">mcp config (claude_desktop_config.json)</span>
-<pre>{
-  <span class="hl">"mcpServers"</span>: {
-    <span class="hl">"conlaunch"</span>: {
-      "command": "npx",
-      "args": ["conlaunch-mcp"],
-      "env": {
-        <span class="hl">"CONLAUNCH_API_URL"</span>: "https://conlaunch.com",
-        <span class="hl">"CONLAUNCH_API_KEY"</span>: "your-api-key"
-      }
-    }
-  }
-}</pre>
+        <span class="label">deploy via REST API</span>
+<pre>curl -X POST https://conlaunch.com/deploy \
+  -H "Content-Type: application/json" \
+  -d '{
+    <span class="hl">"name"</span>: "My Agent Token",
+    <span class="hl">"symbol"</span>: "MAT",
+    <span class="hl">"clientWallet"</span>: "0x..."
+  }'</pre>
       </div>
 
-      <div class="section-title">deployment tools</div>
+      <div class="section-title">available tools (via REST)</div>
 
       <div class="tool-card">
         <h3>deploy_token</h3>
