@@ -40,32 +40,45 @@ export interface LeaderboardEntry {
   latestSymbol: string;
 }
 
-function tokenToAnalytics(t: TokenRecord): TokenAnalytics {
+function tokenToAnalytics(t: any): TokenAnalytics {
+  // DB returns snake_case columns, map to camelCase
+  const addr = t.tokenAddress || t.token_address;
+  const client = t.clientWallet || t.client_wallet;
+  const deployed = t.deployedAt || t.deployed_at;
+  const platBps = t.platformBps ?? t.platform_bps;
+  const cliBps = t.clientBps ?? t.client_bps;
+  const vault = t.vaultPercentage ?? t.vault_percentage;
+  const feesWeth = t.totalFeesClaimedWeth || t.total_fees_claimed_weth || "0";
+  const feesToken = t.totalFeesClaimedToken || t.total_fees_claimed_token || "0";
+
   return {
     name: t.name,
     symbol: t.symbol,
-    tokenAddress: t.tokenAddress,
+    tokenAddress: addr,
     chain: "base",
-    deployedAt: t.deployedAt,
-    clientWallet: t.clientWallet,
-    platformFeeBps: t.platformBps,
-    clientFeeBps: t.clientBps,
-    vaultPercentage: t.vaultPercentage,
-    totalFeesClaimedWeth: t.totalFeesClaimedWeth,
-    totalFeesClaimedToken: t.totalFeesClaimedToken,
+    deployedAt: deployed,
+    clientWallet: client,
+    platformFeeBps: platBps,
+    clientFeeBps: cliBps,
+    vaultPercentage: vault,
+    totalFeesClaimedWeth: feesWeth,
+    totalFeesClaimedToken: feesToken,
     status: t.status,
     links: {
-      basescan: `https://basescan.org/token/${t.tokenAddress}`,
-      dexscreener: `https://dexscreener.com/base/${t.tokenAddress}`,
-      clanker: `https://www.clanker.world/clanker/${t.tokenAddress}`,
-      uniswap: `https://app.uniswap.org/swap?outputCurrency=${t.tokenAddress}&chain=base`,
+      basescan: `https://basescan.org/token/${addr}`,
+      dexscreener: `https://dexscreener.com/base/${addr}`,
+      clanker: `https://www.clanker.world/clanker/${addr}`,
+      uniswap: `https://app.uniswap.org/swap?outputCurrency=${addr}&chain=base`,
     },
   };
 }
 
 export function getTokenAnalytics(tokenAddress: string): TokenAnalytics | null {
   const tokens = getAllTokens();
-  const token = tokens.find((t) => t.tokenAddress.toLowerCase() === tokenAddress.toLowerCase());
+  const token = tokens.find((t: any) => {
+    const addr = t.tokenAddress || t.token_address || "";
+    return addr.toLowerCase() === tokenAddress.toLowerCase();
+  });
   if (!token) return null;
   return tokenToAnalytics(token);
 }
@@ -75,7 +88,7 @@ export function getAgentAnalytics(wallet: string): AgentAnalytics {
   const analytics = tokens.map(tokenToAnalytics);
 
   const totalFees = tokens.reduce(
-    (sum, t) => sum + parseFloat(t.totalFeesClaimedWeth || "0"),
+    (sum, t: any) => sum + parseFloat(t.total_fees_claimed_weth || t.totalFeesClaimedWeth || "0"),
     0
   );
 
@@ -84,8 +97,8 @@ export function getAgentAnalytics(wallet: string): AgentAnalytics {
     totalLaunches: tokens.length,
     tokens: analytics,
     totalFeesEarned: totalFees.toFixed(6),
-    firstLaunch: tokens.length > 0 ? tokens[tokens.length - 1].deployedAt : null,
-    latestLaunch: tokens.length > 0 ? tokens[0].deployedAt : null,
+    firstLaunch: tokens.length > 0 ? ((tokens[tokens.length - 1] as any).deployed_at || (tokens[tokens.length - 1] as any).deployedAt) : null,
+    latestLaunch: tokens.length > 0 ? ((tokens[0] as any).deployed_at || (tokens[0] as any).deployedAt) : null,
   };
 }
 
@@ -95,19 +108,20 @@ export function getLeaderboard(
 ): LeaderboardEntry[] {
   const tokens = getAllTokens();
 
-  // Group by client wallet
-  const byClient = new Map<string, TokenRecord[]>();
+  // Group by client wallet (DB returns snake_case)
+  const byClient = new Map<string, any[]>();
   for (const t of tokens) {
-    const existing = byClient.get(t.clientWallet) || [];
+    const cw = (t as any).client_wallet || (t as any).clientWallet;
+    const existing = byClient.get(cw) || [];
     existing.push(t);
-    byClient.set(t.clientWallet, existing);
+    byClient.set(cw, existing);
   }
 
   // Build entries
   const entries: LeaderboardEntry[] = [];
   for (const [wallet, clientTokens] of byClient) {
     const totalFees = clientTokens.reduce(
-      (sum, t) => sum + parseFloat(t.totalFeesClaimedWeth || "0"),
+      (sum: number, t: any) => sum + parseFloat(t.total_fees_claimed_weth || t.totalFeesClaimedWeth || "0"),
       0
     );
     const latest = clientTokens[0]; // already sorted by deployed_at DESC

@@ -98,9 +98,9 @@ function errorResponse(message: string, status: number) {
 
 function sanitizeError(err: any): string {
   const msg = err?.message || String(err);
-  // Strip internal paths, stack traces, and sensitive info
-  if (msg.includes("PRIVATE_KEY") || msg.includes("0x")) {
-    return "Internal error during transaction";
+  // Strip private keys and file paths — never leak these
+  if (msg.includes("PRIVATE_KEY") || msg.includes("/src/") || msg.includes("/node_modules/")) {
+    return "Internal server error";
   }
   // Cap length to prevent leak of verbose SDK errors
   return msg.length > 200 ? msg.slice(0, 200) + "..." : msg;
@@ -303,7 +303,7 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
     const status = c.req.query("status");
     const sort = c.req.query("sort"); // "newest" (default) or "fees"
     const page = Math.min(10000, Math.max(1, parseInt(c.req.query("page") || "1")));
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query("limit") || "50")));
+    const limit = Math.min(500, Math.max(1, parseInt(c.req.query("limit") || "50")));
     const offset = (page - 1) * limit;
 
     const all = getAllTokens(status || undefined, sort || undefined);
@@ -404,7 +404,10 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
             shareOnX: `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`,
           },
         },
-        rewards: result.rewardsConfig,
+        feeSplit: result.rewardsConfig?.map((r: any) => ({
+          role: r.label,
+          share: r.bps / 100,
+        })),
         warnings: validation.warnings,
         message: `${body.name} ($${body.symbol.toUpperCase()}) deployed on Base!`,
       });
@@ -495,7 +498,7 @@ export function createServer(platformWallet: `0x${string}`, clankerInstance: any
 
   app.get("/analytics/leaderboard", (c) => {
     const sort = (c.req.query("sort") as "launches" | "fees") || "launches";
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query("limit") || "50")));
+    const limit = Math.min(500, Math.max(1, parseInt(c.req.query("limit") || "50")));
     return c.json(getLeaderboard(sort, limit));
   });
 

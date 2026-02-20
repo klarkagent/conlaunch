@@ -475,7 +475,7 @@
         <h3>security model</h3>
         <ul>
           <li><strong style="color: var(--text);">Audited contracts:</strong> Clanker SDK v4 contracts are audited. No custom Solidity code.</li>
-          <li><strong style="color: var(--text);">API authentication:</strong> Bearer token required for all write operations</li>
+          <li><strong style="color: var(--text);">API authentication:</strong> Bearer token required for fee claiming and image upload. Deploy is public.</li>
           <li><strong style="color: var(--text);">Input validation:</strong> All addresses verified as valid 0x hex, bodies capped at 1MB</li>
           <li><strong style="color: var(--text);">Rate limiting:</strong> 1 deployment per wallet per 24 hours</li>
           <li><strong style="color: var(--text);">Security headers:</strong> CSP, X-Frame-Options, HSTS via middleware</li>

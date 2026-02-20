@@ -1,11 +1,13 @@
 import { formatEther } from "viem";
 import { getAllTokens, getTokenByAddress, recordFeeClaim } from "./db.js";
+import { WETH_BASE } from "./types.js";
 import type { FeeClaimResult } from "./types.js";
+
+const WETH = WETH_BASE as `0x${string}`;
 
 /**
  * Check available rewards for a specific token.
- * Checks both platform (20%) and client (80%) shares.
- * Uses Clanker SDK v4: availableRewards({ token, rewardRecipient }) → bigint
+ * Checks TOKEN fees + WETH fees for both platform and client.
  */
 export async function checkFees(
   tokenAddress: string,
@@ -13,52 +15,67 @@ export async function checkFees(
   clankerInstance: any
 ): Promise<{
   available: boolean;
-  platform: { amount: string; raw: string };
-  client: { wallet: string; amount: string; raw: string } | null;
+  platform: { tokenAmount: string; wethAmount: string };
+  client: { wallet: string; tokenAmount: string; wethAmount: string } | null;
 }> {
   const token = getTokenByAddress(tokenAddress);
-  // DB returns snake_case columns
   const clientWallet = (token as any)?.client_wallet as `0x${string}` | undefined;
 
-  // Check platform fees
-  let platformAmount = 0n;
+  // Check platform fees (TOKEN + WETH)
+  let platformTokenAmount = 0n;
+  let platformWethAmount = 0n;
   try {
-    platformAmount = await clankerInstance.availableRewards({
+    platformTokenAmount = await clankerInstance.availableRewards({
       token: tokenAddress as `0x${string}`,
       rewardRecipient: platformWallet,
     });
   } catch {}
+  try {
+    platformWethAmount = await clankerInstance.availableRewards({
+      token: WETH,
+      rewardRecipient: platformWallet,
+    });
+  } catch {}
 
-  // Check client fees
-  let clientAmount = 0n;
+  // Check client fees (TOKEN + WETH)
+  let clientTokenAmount = 0n;
+  let clientWethAmount = 0n;
   if (clientWallet && clientWallet !== platformWallet) {
     try {
-      clientAmount = await clankerInstance.availableRewards({
+      clientTokenAmount = await clankerInstance.availableRewards({
         token: tokenAddress as `0x${string}`,
+        rewardRecipient: clientWallet,
+      });
+    } catch {}
+    try {
+      clientWethAmount = await clankerInstance.availableRewards({
+        token: WETH,
         rewardRecipient: clientWallet,
       });
     } catch {}
   }
 
+  const totalToken = platformTokenAmount + clientTokenAmount;
+  const totalWeth = platformWethAmount + clientWethAmount;
+
   return {
-    available: platformAmount > 0n || clientAmount > 0n,
+    available: totalToken > 0n || totalWeth > 0n,
     platform: {
-      amount: formatEther(platformAmount),
-      raw: platformAmount.toString(),
+      tokenAmount: formatEther(platformTokenAmount),
+      wethAmount: formatEther(platformWethAmount),
     },
     client: clientWallet
       ? {
           wallet: clientWallet,
-          amount: formatEther(clientAmount),
-          raw: clientAmount.toString(),
+          tokenAmount: formatEther(clientTokenAmount),
+          wethAmount: formatEther(clientWethAmount),
         }
       : null,
   };
 }
 
 /**
- * Claim rewards for a specific token — claims for BOTH platform and client.
- * Uses Clanker SDK v4: claimRewards({ token, rewardRecipient }) → { txHash } | { error }
+ * Claim rewards for a specific token — claims TOKEN + WETH for BOTH platform and client.
  */
 export async function claimFees(
   tokenAddress: string,
@@ -66,68 +83,76 @@ export async function claimFees(
   clankerInstance: any
 ): Promise<FeeClaimResult | null> {
   const token = getTokenByAddress(tokenAddress);
-  // DB returns snake_case columns
   const clientWallet = (token as any)?.client_wallet as `0x${string}` | undefined;
   const txHashes: string[] = [];
-  let totalClaimed = 0n;
+  let totalTokenClaimed = 0n;
+  let totalWethClaimed = 0n;
 
-  // Claim platform fees (20%)
-  try {
-    const platformAvailable: bigint = await clankerInstance.availableRewards({
-      token: tokenAddress as `0x${string}`,
-      rewardRecipient: platformWallet,
-    });
-
-    if (platformAvailable > 0n) {
-      const result = await clankerInstance.claimRewards({
-        token: tokenAddress as `0x${string}`,
-        rewardRecipient: platformWallet,
-      });
-      if (!result.error) {
-        txHashes.push(result.txHash);
-        totalClaimed += platformAvailable;
-      } else {
-        console.error(`Platform claim error for ${tokenAddress}:`, result.error.data?.label || result.error.message);
-      }
-    }
-  } catch (err: any) {
-    console.error(`Platform claim failed for ${tokenAddress}:`, err.message);
-  }
-
-  // Claim client fees (80%)
-  if (clientWallet && clientWallet !== platformWallet) {
+  // Helper to claim for a wallet
+  async function claimForWallet(wallet: `0x${string}`, label: string) {
+    // Claim TOKEN fees
     try {
-      const clientAvailable: bigint = await clankerInstance.availableRewards({
+      const available: bigint = await clankerInstance.availableRewards({
         token: tokenAddress as `0x${string}`,
-        rewardRecipient: clientWallet,
+        rewardRecipient: wallet,
       });
-
-      if (clientAvailable > 0n) {
+      if (available > 0n) {
         const result = await clankerInstance.claimRewards({
           token: tokenAddress as `0x${string}`,
-          rewardRecipient: clientWallet,
+          rewardRecipient: wallet,
         });
         if (!result.error) {
           txHashes.push(result.txHash);
-          totalClaimed += clientAvailable;
+          totalTokenClaimed += available;
         } else {
-          console.error(`Client claim error for ${tokenAddress}:`, result.error.data?.label || result.error.message);
+          console.error(`[claim] ${label} token error for ${tokenAddress}:`, result.error.data?.label || result.error.message || result.error);
         }
       }
     } catch (err: any) {
-      console.error(`Client claim failed for ${tokenAddress}:`, err.message);
+      console.error(`[claim] ${label} token failed for ${tokenAddress}:`, err.message);
     }
+
+    // Claim WETH fees
+    try {
+      const available: bigint = await clankerInstance.availableRewards({
+        token: WETH,
+        rewardRecipient: wallet,
+      });
+      if (available > 0n) {
+        const result = await clankerInstance.claimRewards({
+          token: WETH,
+          rewardRecipient: wallet,
+        });
+        if (!result.error) {
+          txHashes.push(result.txHash);
+          totalWethClaimed += available;
+        } else {
+          console.error(`[claim] ${label} WETH error for ${tokenAddress}:`, result.error.data?.label || result.error.message || result.error);
+        }
+      }
+    } catch (err: any) {
+      console.error(`[claim] ${label} WETH failed for ${tokenAddress}:`, err.message);
+    }
+  }
+
+  // Claim for platform (20%)
+  await claimForWallet(platformWallet, "platform");
+
+  // Claim for client (80%)
+  if (clientWallet && clientWallet !== platformWallet) {
+    await claimForWallet(clientWallet, "client");
   }
 
   if (txHashes.length === 0) return null;
 
-  const wethClaimed = formatEther(totalClaimed);
-  return recordFeeClaim(tokenAddress, txHashes[0], wethClaimed, "0");
+  const wethClaimed = formatEther(totalWethClaimed);
+  const tokenClaimed = formatEther(totalTokenClaimed);
+  return recordFeeClaim(tokenAddress, txHashes[0], wethClaimed, tokenClaimed);
 }
 
 /**
  * Batch claim fees across all active deployed tokens.
- * Claims for both platform and client wallets.
+ * Claims TOKEN + WETH for both platform and client wallets.
  */
 export async function claimAllFees(
   platformWallet: `0x${string}`,
@@ -143,7 +168,6 @@ export async function claimAllFees(
   const errors: Array<{ address: string; error: string }> = [];
 
   for (const token of tokens) {
-    // DB returns snake_case columns
     const addr = (token as any).token_address as string;
     try {
       const result = await claimFees(addr, platformWallet, clankerInstance);

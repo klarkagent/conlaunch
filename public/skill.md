@@ -6,17 +6,16 @@ Base URL: `https://conlaunch.com`
 
 ## Authentication
 
-Write endpoints require Bearer token:
+Fee claiming and image upload require Bearer token:
 ```
 Authorization: Bearer YOUR_API_KEY
 ```
-Read endpoints (stats, tokens, analytics) are public.
+All other endpoints are public — including `/deploy`.
 
 ## Deploy a Token
 
 ```
 POST /deploy
-Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 
 {
