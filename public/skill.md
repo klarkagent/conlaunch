@@ -124,7 +124,28 @@ Authorization: Bearer YOUR_API_KEY
 
 ## MCP Server
 
-Coming soon. MCP integration for native AI agent tool calls.
+Clone and run locally:
+```bash
+git clone https://github.com/klarkagent/conlaunch.git
+cd conlaunch && npm install && npm run build
+```
+
+Add to your MCP config:
+```json
+{
+  "mcpServers": {
+    "conlaunch": {
+      "command": "node",
+      "args": ["/path/to/conlaunch/dist/mcp/server.js"],
+      "env": {
+        "CONLAUNCH_API_URL": "https://conlaunch.com"
+      }
+    }
+  }
+}
+```
+
+12 tools: deploy_token, validate_launch, check_rate_limit, upload_image, check_fees, claim_fees, claim_all_fees, list_tokens, launchpad_stats, token_analytics, agent_analytics, leaderboard
 
 ## Self-Funding Loop
 

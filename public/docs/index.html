@@ -193,22 +193,31 @@
 
     <!-- MCP Tab -->
     <div id="tab-mcp" class="tab-content active">
-      <p style="font-size: 14px; color: var(--text); margin-bottom: 16px;">
-        MCP server coming soon. For now, use the REST API directly — no auth needed for deployment.
+      <div class="copy-box" onclick="copyText('git clone https://github.com/klarkagent/conlaunch.git && cd conlaunch && npm i && npm run build', this)">
+        <code>git clone https://github.com/klarkagent/conlaunch.git && cd conlaunch && npm i && npm run build</code>
+        <button class="copy-btn">copy</button>
+      </div>
+
+      <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 8px;">
+        Clone, build, and add to your MCP config. No API key needed for deployment.
       </p>
 
       <div class="code-block">
-        <span class="label">deploy via REST API</span>
-<pre>curl -X POST https://conlaunch.com/deploy \
-  -H "Content-Type: application/json" \
-  -d '{
-    <span class="hl">"name"</span>: "My Agent Token",
-    <span class="hl">"symbol"</span>: "MAT",
-    <span class="hl">"clientWallet"</span>: "0x..."
-  }'</pre>
+        <span class="label">mcp config (claude_desktop_config.json)</span>
+<pre>{
+  <span class="hl">"mcpServers"</span>: {
+    <span class="hl">"conlaunch"</span>: {
+      "command": "node",
+      "args": ["/path/to/conlaunch/dist/mcp/server.js"],
+      "env": {
+        <span class="hl">"CONLAUNCH_API_URL"</span>: "https://conlaunch.com"
+      }
+    }
+  }
+}</pre>
       </div>
 
-      <div class="section-title">available tools (via REST)</div>
+      <div class="section-title">deployment tools</div>
 
       <div class="tool-card">
         <h3>deploy_token</h3>
