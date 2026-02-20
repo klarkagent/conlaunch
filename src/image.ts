@@ -63,8 +63,12 @@ export async function uploadImage(
     return { success: true, url: gatewayUrl };
   }
 
-  // If base64, try uploading to imgbb (free tier, no API key needed for small images)
+  // If base64, upload to imgbb (requires API key from env)
   if (input.startsWith("data:image/") || /^[A-Za-z0-9+/=]+$/.test(input)) {
+    const imgbbKey = process.env.IMGBB_API_KEY;
+    if (!imgbbKey) {
+      return { success: false, error: "Base64 upload not configured — provide a direct HTTPS image URL instead" };
+    }
     try {
       const base64Data = input.startsWith("data:image/")
         ? input.split(",")[1]
@@ -74,14 +78,13 @@ export async function uploadImage(
       formData.append("image", base64Data);
       if (name) formData.append("name", name);
 
-      const res = await fetch("https://api.imgbb.com/1/upload?key=anonymous", {
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
         method: "POST",
         body: formData,
       });
 
       if (!res.ok) {
-        // Fallback: return error, agent can host image another way
-        return { success: false, error: "Image upload failed — provide a direct URL instead" };
+        return { success: false, error: "Image upload failed — provide a direct HTTPS URL instead" };
       }
 
       const data = await res.json();

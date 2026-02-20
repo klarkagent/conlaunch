@@ -236,7 +236,8 @@ curl -X POST https://conlaunch.com/deploy \
       <h2>Security</h2>
       <ul>
         <li>All tokens use <strong>audited Clanker SDK v4 contracts</strong> — no custom smart contracts</li>
-        <li>API keys required for all write operations (deploy, claim, upload)</li>
+        <li>Deploy is public — no API key needed. Rate limited to 1 per wallet per 24h</li>
+        <li>API keys required for fee claiming and image upload only</li>
         <li>Read endpoints are public (stats, tokens, analytics)</li>
         <li>Request body capped at 1MB, all inputs validated server-side</li>
         <li>All addresses validated as proper 0x-prefixed hex (42 chars)</li>

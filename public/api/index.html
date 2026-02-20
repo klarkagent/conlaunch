@@ -188,10 +188,15 @@
         <span class="endpoint-desc">Platform statistics</span>
       </div>
       <div class="endpoint-body">
+        <table class="param-table">
+          <tr><th>Query Param</th><th>Description</th></tr>
+          <tr><td>period</td><td>"24h" for last 24 hours, omit for all-time</td></tr>
+        </table>
 <pre>{
   <span class="hl">"totalTokensDeployed"</span>: 42,
   <span class="hl">"uniqueClients"</span>: 18,
   <span class="hl">"totalFeesClaimedWeth"</span>: "0.5421",
+  <span class="hl">"activeTokens"</span>: 40,
   <span class="hl">"totalFeesClaimed"</span>: 12
 }</pre>
       </div>
@@ -207,8 +212,9 @@
         <table class="param-table">
           <tr><th>Query Param</th><th>Description</th></tr>
           <tr><td>page</td><td>Page number (default: 1)</td></tr>
-          <tr><td>limit</td><td>Items per page (max: 100)</td></tr>
-          <tr><td>status</td><td>Filter by status</td></tr>
+          <tr><td>limit</td><td>Items per page (max: 500)</td></tr>
+          <tr><td>sort</td><td>"newest" (default) or "fees"</td></tr>
+          <tr><td>status</td><td>Filter: "active" or "inactive"</td></tr>
         </table>
 <pre>
 {
@@ -269,7 +275,28 @@
         <span class="endpoint-desc">Check claimable fees</span>
       </div>
       <div class="endpoint-body">
-<pre>{ <span class="hl">"available"</span>: true, <span class="hl">"rewards"</span>: { ... } }</pre>
+<pre>{
+  <span class="hl">"available"</span>: true,
+  <span class="hl">"platform"</span>: { "tokenAmount": "0.0", "wethAmount": "0.001234" },
+  <span class="hl">"client"</span>: { "wallet": "0x...", "tokenAmount": "0.0", "wethAmount": "0.004936" }
+}</pre>
+      </div>
+    </div>
+
+    <div class="endpoint" onclick="this.classList.toggle('open')">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/fees/aggregate</span>
+        <span class="endpoint-desc">Aggregated 24h fee estimates (cached 5min)</span>
+      </div>
+      <div class="endpoint-body">
+<pre>{
+  <span class="hl">"totalFeesUsd"</span>: 142.50,
+  <span class="hl">"totalVolume24hUsd"</span>: 14250.00,
+  <span class="hl">"feeRate"</span>: 0.01,
+  <span class="hl">"tokens"</span>: [{ "address": "0x...", "volume24hUsd": 500, "fees24hUsd": 5.0 }],
+  <span class="hl">"cachedAt"</span>: "2026-02-20T12:00:00.000Z"
+}</pre>
       </div>
     </div>
 
@@ -323,7 +350,7 @@
         <table class="param-table">
           <tr><th>Query Param</th><th>Description</th></tr>
           <tr><td>sort</td><td>"launches" or "fees" (default: launches)</td></tr>
-          <tr><td>limit</td><td>Max results (default: 50, max: 100)</td></tr>
+          <tr><td>limit</td><td>Max results (default: 50, max: 500)</td></tr>
         </table>
       </div>
     </div>
@@ -350,7 +377,7 @@
           <tr><td>vault.percentage</td><td>Supply to vault (0-90%)</td></tr>
           <tr><td>vault.lockupDays</td><td>Lockup period (min 7 days)</td></tr>
           <tr><td>vault.vestingDays</td><td>Vesting period after lockup</td></tr>
-          <tr><td>feeSplit</td><td>Array of fee recipients (max 5)</td></tr>
+          <tr><td>feeSplit</td><td>Array of { wallet, share, role } — max 5 recipients, total share &le; 80%</td></tr>
         </table>
 <pre>
 <span class="cm">// Response</span>

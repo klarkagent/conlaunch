@@ -245,7 +245,34 @@ export async function recoverTokensFromChain(platformWallet: string): Promise<nu
               symbol = tokenData.symbol || symbol;
             } catch {}
 
-            const result = insert.run(name, symbol, tokenAddr, txHash, platformWallet, 8000, 2000);
+            // Try to extract real client wallet from decoded tx input (reward recipients)
+            let clientWallet = platformWallet;
+            try {
+              const decoded = tx.decoded_input;
+              if (decoded?.parameters) {
+                for (const param of decoded.parameters) {
+                  // Look for reward recipients tuple array
+                  if (param.name === "rewardRecipients" || param.name === "_rewardRecipients" || param.name === "recipients") {
+                    const recipients: any[] = Array.isArray(param.value) ? param.value : [];
+                    // Find the non-platform wallet with highest bps — that's the client
+                    let bestBps = 0;
+                    for (const r of recipients) {
+                      const addr = (r.recipient || r[0] || "").toLowerCase();
+                      const bps = parseInt(r.bps || r[2] || "0");
+                      if (addr && addr !== platformWallet.toLowerCase() && bps > bestBps) {
+                        clientWallet = addr;
+                        bestBps = bps;
+                      }
+                    }
+                  }
+                }
+              }
+              if (clientWallet === platformWallet) {
+                console.log(`  [recovery] Could not determine client wallet for ${tokenAddr.slice(0, 12)}... — using platform`);
+              }
+            } catch {}
+
+            const result = insert.run(name, symbol, tokenAddr, txHash, clientWallet, 8000, 2000);
             if (result.changes > 0) {
               recovered++;
               console.log(`  [recovery] Found new token: ${name} ($${symbol}) ${tokenAddr.slice(0, 10)}...`);

@@ -111,6 +111,7 @@ GET /clients/0xWallet/tokens           # tokens by agent
 GET /analytics/token/0xAddress         # token analytics
 GET /analytics/agent/0xWallet          # agent analytics
 GET /analytics/leaderboard?sort=fees   # leaderboard (sort: launches|fees)
+GET /fees/aggregate                    # 24h fee estimates (DexScreener volume, cached 5min)
 ```
 
 ## Image Upload

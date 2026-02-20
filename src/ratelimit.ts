@@ -20,7 +20,9 @@ export function checkRateLimit(wallet: string): {
     return { allowed: true, nextAllowedAt: null, remainingMs: 0 };
   }
 
-  const lastTime = new Date(lastLaunch.deployed_at).getTime();
+  // SQLite datetime('now') returns UTC without Z suffix — append Z to parse as UTC
+  const raw = lastLaunch.deployed_at;
+  const lastTime = new Date(raw.endsWith("Z") ? raw : raw + "Z").getTime();
   const now = Date.now();
   const elapsed = now - lastTime;
 

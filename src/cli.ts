@@ -101,7 +101,6 @@ async function main() {
         break;
       }
       case "deploy": {
-        if (!KEY) { console.error("Error: CONLAUNCH_API_KEY required for deploy"); process.exit(1); }
         const pos = positional(args.slice(1));
         if (pos.length < 3) { console.error("Usage: conlaunch deploy <name> <symbol> <wallet> [--vault N]"); process.exit(1); }
         const flags = parseFlags(args.slice(1));

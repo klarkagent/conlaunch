@@ -32,6 +32,11 @@ server.tool(
     vaultPercentage: z.number().optional().describe("Lock % of supply (0-90)"),
     lockupDays: z.number().optional().describe("Lockup duration in days (min 7)"),
     vestingDays: z.number().optional().describe("Vesting duration in days"),
+    feeSplit: z.array(z.object({
+      wallet: z.string().describe("Recipient wallet address"),
+      share: z.number().describe("Percentage share (e.g. 30 = 30%)"),
+      role: z.string().describe("Role label (e.g. creator, marketer, dev)"),
+    })).optional().describe("Split fees across multiple wallets (max 5)"),
   },
   async (params) => {
     const body: any = { ...params };
@@ -59,10 +64,18 @@ server.tool(
     name: z.string().describe("Token name"),
     symbol: z.string().describe("Token symbol"),
     clientWallet: z.string().describe("Wallet address"),
-    vaultPercentage: z.number().optional(),
+    vaultPercentage: z.number().optional().describe("Lock % of supply (0-90)"),
+    lockupDays: z.number().optional().describe("Lockup duration in days (min 7)"),
   },
   async (params) => {
-    const data = await api("/preview", "POST", params);
+    const body: any = { name: params.name, symbol: params.symbol, clientWallet: params.clientWallet };
+    if (params.vaultPercentage && params.vaultPercentage > 0) {
+      body.vault = {
+        percentage: params.vaultPercentage,
+        lockupDays: params.lockupDays || 7,
+      };
+    }
+    const data = await api("/preview", "POST", body);
     return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
   }
 );
