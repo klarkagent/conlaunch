@@ -185,7 +185,9 @@ export async function deployToken(
     const { txHash, waitForTransaction, error } = await clankerInstance.deploy(deployConfig);
 
     if (error) {
-      return { success: false, error: "Deployment rejected by Clanker" };
+      const errMsg = typeof error === "string" ? error : error?.message || JSON.stringify(error);
+      console.error(`[deploy] Clanker rejected ${req.symbol}:`, errMsg);
+      return { success: false, error: `Deployment rejected: ${errMsg}` };
     }
 
     const result = await waitForTransaction();
